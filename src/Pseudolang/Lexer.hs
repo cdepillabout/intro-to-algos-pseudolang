@@ -3,17 +3,17 @@ module Pseudolang.Lexer where
 
 import Pseudolang.Prelude hiding (some)
 
-import Text.Megaparsec (ParsecT, Pos, SourcePos, some)
-import Text.Megaparsec.Char (hspace1)
+import Text.Megaparsec (ParsecT, Pos, SourcePos, getOffset, some)
+import Text.Megaparsec.Char (hspace1, string)
 import qualified Text.Megaparsec.Char.Lexer as Megaparsec.Lexer
 
 type Parser = ParsecT Void Text Identity
 
 data Token = Token
   { token :: Tok
-  , position :: SourcePos
-  , span :: Pos
-  }
+  , startPos :: Int
+  , endPos :: Int
+  } deriving (Eq, Show)
 
 data Tok
   = TokCloseCurlyBrace
@@ -36,12 +36,14 @@ data Tok
   | TokPlus
   | TokReturn
   | TokTo
+  deriving (Eq, Show)
 
 tokenizer :: Parser [Token]
 tokenizer = some lexer
 
 lexer :: Parser Token
-lexer = undefined
+lexer =
+  symForParser <|> symEqualsParser
 
 space :: Parser ()
 space = Megaparsec.Lexer.space hspace1 empty empty
@@ -49,8 +51,16 @@ space = Megaparsec.Lexer.space hspace1 empty empty
 lexeme :: Parser a -> Parser a
 lexeme = Megaparsec.Lexer.lexeme space
 
-symbol :: Text -> Tok -> Parser Tok
-symbol text tok = Megaparsec.Lexer.symbol space text $> tok
+symbol :: Text -> Tok -> Parser Token
+symbol text tok = do
+  startingOffset <- getOffset
+  void $ string text
+  endingOffset <- getOffset
+  space
+  pure $ Token tok startingOffset endingOffset
 
-symForParser :: Parser Tok
+symForParser :: Parser Token
 symForParser = symbol "for" TokFor
+
+symEqualsParser :: Parser Token
+symEqualsParser = symbol "=" TokEquals

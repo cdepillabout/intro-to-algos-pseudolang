@@ -28,14 +28,14 @@ source-repository head
 library
   exposed-modules:
     Pseudolang.Lexer
-    Lib
+    Pseudolang.Main
+    Pseudolang.Prelude
   other-modules:
     Paths_pseudolang
   hs-source-dirs: src
   ghc-options:
     -Wall -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-unused-imports -Wno-unused-top-binds -O2
   default-extensions:
-    AutoDeriveTypeable
     BangPatterns
     BinaryLiterals
     BlockArguments
@@ -97,11 +97,54 @@ test-suite pseudolang-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_pseudolang
-  hs-source-dirs:
-      test
+    Paths_pseudolang
+    Test.Pseudolang.LexerTest
+  hs-source-dirs: test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  default-extensions:
+    BangPatterns
+    BinaryLiterals
+    BlockArguments
+    ConstraintKinds
+    DataKinds
+    DefaultSignatures
+    DeriveDataTypeable
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    DoAndIfThenElse
+    EmptyCase
+    EmptyDataDecls
+    ExistentialQuantification
+    ExplicitNamespaces
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    InstanceSigs
+    KindSignatures
+    LambdaCase
+    MultiParamTypeClasses
+    MultiWayIf
+    NamedFieldPuns
+    NoImplicitPrelude
+    OverloadedStrings
+    PartialTypeSignatures
+    PatternGuards
+    PolyKinds
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TupleSections
+    TypeFamilies
+    TypeSynonymInstances
+    ViewPatterns
   build-depends:
       base >=4.7 && <5
+    , hspec
+    , megaparsec
     , pseudolang
   default-language: Haskell2010
