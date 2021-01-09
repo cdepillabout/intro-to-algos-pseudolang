@@ -1,0 +1,107 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 707786e29b9835e1e53f62ae720d01f150475d3af00c992d59890e60daa27e24
+
+name:           pseudolang
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/pseudolang#readme>
+homepage:       https://github.com/githubuser/pseudolang#readme
+bug-reports:    https://github.com/githubuser/pseudolang/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2021 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/pseudolang
+
+library
+  exposed-modules:
+    Pseudolang.Lexer
+    Lib
+  other-modules:
+    Paths_pseudolang
+  hs-source-dirs: src
+  ghc-options:
+    -Wall -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-unused-imports -Wno-unused-top-binds -O2
+  default-extensions:
+    AutoDeriveTypeable
+    BangPatterns
+    BinaryLiterals
+    BlockArguments
+    ConstraintKinds
+    DataKinds
+    DefaultSignatures
+    DeriveDataTypeable
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    DoAndIfThenElse
+    EmptyCase
+    EmptyDataDecls
+    ExistentialQuantification
+    ExplicitNamespaces
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    InstanceSigs
+    KindSignatures
+    LambdaCase
+    MultiParamTypeClasses
+    MultiWayIf
+    NamedFieldPuns
+    NoImplicitPrelude
+    OverloadedStrings
+    PartialTypeSignatures
+    PatternGuards
+    PolyKinds
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TupleSections
+    TypeFamilies
+    TypeSynonymInstances
+    ViewPatterns
+  build-depends:
+      base >=4.7 && <5
+    , classy-prelude
+    , megaparsec
+  default-language: Haskell2010
+
+executable pseudolang-exe
+  main-is: Main.hs
+  other-modules:
+    Paths_pseudolang
+  hs-source-dirs: app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , pseudolang
+  default-language: Haskell2010
+
+test-suite pseudolang-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_pseudolang
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , pseudolang
+  default-language: Haskell2010
