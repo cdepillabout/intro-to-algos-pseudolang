@@ -48,25 +48,13 @@ lexer =
 space :: Parser ()
 space = Megaparsec.Lexer.space hspace1 empty empty
 
-lexeme :: Parser a -> (a -> Tok) -> Parser Token
-lexeme p f = do
+lexeme :: Parser Tok -> Parser Token
+lexeme p = do
   startingOffset <- getOffset
-  res <- p
+  tok <- p
   endingOffset <- getOffset
   space
-  pure $ Token (f res) startingOffset endingOffset
-
--- symbol :: Text -> Tok -> Parser Token
--- symbol text tok = do
---   startingOffset <- getOffset
---   void $ string text
---   endingOffset <- getOffset
---   notFollowedBy (
---   space
---   pure $ Token tok startingOffset endingOffset
-
--- symEqualsParser :: Parser Token
--- symEqualsParser = symbol "=" TokEquals
+  pure $ Token tok startingOffset endingOffset
 
 reservedAlphaWords :: [(Text, Tok)]
 reservedAlphaWords =
@@ -74,22 +62,12 @@ reservedAlphaWords =
   , ("downto", TokDownTo)
   ]
 
--- reservedAlphaWordsParser :: Parser Token
--- reservedAlphaWordsParser = do
---   startingOffset <- getOffset
---   tok <- choice $ fmap (\(str, tok) -> string str $> tok) reservedAlphaWords
---   endingOffset <- getOffset
---   notFollowedBy alphaNumChar
---   space
---   pure $ Token tok startingOffset endingOffset
 reservedAlphaWordsParser :: Parser Token
 reservedAlphaWordsParser = do
-  startingOffset <- getOffset
-  tok <- choice $ fmap (\(str, tok) -> string str $> tok) reservedAlphaWords
-  endingOffset <- getOffset
-  notFollowedBy alphaNumChar
-  space
-  pure $ Token tok startingOffset endingOffset
+  lexeme do
+    tok <- choice $ fmap (\(str, tok) -> string str $> tok) reservedAlphaWords
+    notFollowedBy alphaNumChar
+    pure tok
 
 reservedSyms :: [(Text, Tok)]
 reservedSyms =
@@ -99,17 +77,12 @@ reservedSyms =
 
 reservedSymsParser :: Parser Token
 reservedSymsParser = do
-  startingOffset <- getOffset
-  tok <- choice $ fmap (\(str, tok) -> string str $> tok) reservedSyms
-  endingOffset <- getOffset
-  space
-  pure $ Token tok startingOffset endingOffset
+  lexeme (choice $ fmap (\(str, tok) -> string str $> tok) reservedSyms)
 
 identifierParser :: Parser Token
 identifierParser = do
-  startingOffset <- getOffset
-  firstChar <- asciiChar
-  (remainingChars :: [Char]) <- many alphaNumChar
-  endingOffset <- getOffset
-  space
-  pure $ Token (TokIdentifier $ pack (firstChar : remainingChars)) startingOffset endingOffset
+  lexeme do
+    firstChar <- asciiChar
+    (remainingChars :: [Char]) <- many alphaNumChar
+    let ident = pack (firstChar : remainingChars)
+    pure $ TokIdentifier ident
