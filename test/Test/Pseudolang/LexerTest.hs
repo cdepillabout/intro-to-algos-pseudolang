@@ -9,8 +9,8 @@ import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 import Pseudolang.Lexer
 
 parserTest :: (Eq a, Show a) => Parser a -> Text -> a -> IO ()
-parserTest p str expectedRes = do
-  let eitherRes = parse (p <* eof) "" str
+parserTest parser input expectedRes = do
+  let eitherRes = parse (parser <* eof) "" input
   case eitherRes of
     Right res -> res `shouldBe` expectedRes
     Left err -> expectationFailure $ errorBundlePretty err

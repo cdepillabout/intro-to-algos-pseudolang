@@ -13,7 +13,7 @@ data Token = Token
   { token :: Tok
   , startPos :: Int
   , endPos :: Int
-  } deriving (Eq, Show)
+  } deriving (Eq, Ord, Show)
 
 data Tok
   = TokCloseCurlyBrace
@@ -23,6 +23,7 @@ data Tok
   | TokDownTo
   | TokEquals
   | TokFor
+  | TokFun
   | TokGreaterThan
   | TokIdentifier Text -- ^ Identifier name.
   | TokIndent Pos -- ^ How many spaces this indent includes.
@@ -35,7 +36,7 @@ data Tok
   | TokPlus
   | TokReturn
   | TokTo
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 tokenizer :: Parser [Token]
 tokenizer = some lexer
@@ -65,8 +66,9 @@ lexemeParser p = tokenParser p <* spaceParser
 
 reservedAlphaWords :: [(Text, Tok)]
 reservedAlphaWords =
-  [ ("for", TokFor)
+  [ ("fun", TokFun)
   , ("downto", TokDownTo)
+  , ("for", TokFor)
   , ("return", TokReturn)
   , ("to", TokTo)
   ]
