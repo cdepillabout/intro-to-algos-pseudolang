@@ -4,7 +4,7 @@ module Pseudolang.Lexer where
 import Pseudolang.Prelude hiding (many, some, try)
 
 import Text.Megaparsec (ParsecT, Pos, SourcePos, choice, getOffset, many, notFollowedBy, some, try)
-import Text.Megaparsec.Char (alphaNumChar, asciiChar, hspace1, string)
+import Text.Megaparsec.Char (alphaNumChar, asciiChar, char, hspace1, string)
 import qualified Text.Megaparsec.Char.Lexer as Megaparsec.Lexer
 
 type Parser = ParsecT Void Text Identity
@@ -26,7 +26,6 @@ data Tok
   | TokGreaterThan
   | TokIdentifier Text
   | TokIndent Pos -- ^ How many spaces this indent includes.
-  | TokInfinity
   | TokLessThan
   | TokMinus
   | TokNewline
@@ -60,6 +59,8 @@ reservedAlphaWords :: [(Text, Tok)]
 reservedAlphaWords =
   [ ("for", TokFor)
   , ("downto", TokDownTo)
+  , ("return", TokReturn)
+  , ("to", TokTo)
   ]
 
 reservedAlphaWordsParser :: Parser Token
@@ -73,6 +74,17 @@ reservedSyms :: [(Text, Tok)]
 reservedSyms =
   [ ("=", TokEquals)
   , ("<", TokLessThan)
+  , (")", TokCloseParen)
+  , ("}", TokCloseCurlyBrace)
+  , ("]", TokCloseSquareBracket)
+  , (",", TokComma)
+  , (">", TokGreaterThan)
+  , ("-", TokMinus)
+  , ("\n", TokNewline)
+  , ("(", TokOpenParen)
+  , ("{", TokOpenCurlyBrace)
+  , ("[", TokOpenSquareBracket)
+  , ("+", TokPlus)
   ]
 
 reservedSymsParser :: Parser Token
@@ -83,6 +95,6 @@ identifierParser :: Parser Token
 identifierParser = do
   lexeme do
     firstChar <- asciiChar
-    (remainingChars :: [Char]) <- many alphaNumChar
+    (remainingChars :: [Char]) <- many (alphaNumChar <|> char '-')
     let ident = pack (firstChar : remainingChars)
     pure $ TokIdentifier ident

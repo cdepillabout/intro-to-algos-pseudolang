@@ -26,10 +26,12 @@ test =
         , Token TokEquals 6 7
         ]
     it "test3" $ do
-      parserTest tokenizer "xxx form    for = downto  "
-        [ Token {token = TokIdentifier "xxx", startPos = 0, endPos = 3}
-        , Token {token = TokIdentifier "form", startPos = 4, endPos = 8}
-        , Token {token = TokFor, startPos = 12, endPos = 15}
-        , Token {token = TokEquals, startPos = 16, endPos = 17}
-        , Token {token = TokDownTo, startPos = 18, endPos = 24}
+      parserTest tokenizer "xx-x- form  -  for = downto , "
+        [ Token {token = TokIdentifier "xx-x-", startPos = 0, endPos = 5}
+        , Token {token = TokIdentifier "form", startPos = 6, endPos = 10}
+        , Token {token = TokMinus, startPos = 12, endPos = 13}
+        , Token {token = TokFor, startPos = 15, endPos = 18}
+        , Token {token = TokEquals, startPos = 19, endPos = 20}
+        , Token {token = TokDownTo, startPos = 21, endPos = 27}
+        , Token {token = TokComma, startPos = 28, endPos = 29}
         ]
