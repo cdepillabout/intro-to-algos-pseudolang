@@ -29,6 +29,7 @@ library
   exposed-modules:
     Pseudolang.Lexer
     Pseudolang.Main
+    Pseudolang.Parser
     Pseudolang.Prelude
   other-modules:
     Paths_pseudolang
