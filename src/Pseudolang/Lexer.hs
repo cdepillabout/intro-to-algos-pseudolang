@@ -3,8 +3,8 @@ module Pseudolang.Lexer where
 
 import Pseudolang.Prelude hiding (many, some, try)
 
-import Text.Megaparsec (ParsecT, Pos, SourcePos, choice, getOffset, many, notFollowedBy, some, try)
-import Text.Megaparsec.Char (alphaNumChar, asciiChar, char, hspace1, string)
+import Text.Megaparsec (ParsecT, Pos, SourcePos, choice, getOffset, many, mkPos, notFollowedBy, some, try)
+import Text.Megaparsec.Char (alphaNumChar, char, hspace1, letterChar, string)
 import qualified Text.Megaparsec.Char.Lexer as Megaparsec.Lexer
 
 type Parser = ParsecT Void Text Identity
@@ -24,7 +24,7 @@ data Tok
   | TokEquals
   | TokFor
   | TokGreaterThan
-  | TokIdentifier Text
+  | TokIdentifier Text -- ^ Identifier name.
   | TokIndent Pos -- ^ How many spaces this indent includes.
   | TokLessThan
   | TokMinus
@@ -42,18 +42,26 @@ tokenizer = some lexer
 
 lexer :: Parser Token
 lexer =
-  reservedSymsParser <|> try reservedAlphaWordsParser <|> identifierParser
+  choice
+    [ reservedSymsParser
+    , try reservedAlphaWordsParser
+    , identifierParser
+    , newlineParser
+    , indentParser
+    ]
 
-space :: Parser ()
-space = Megaparsec.Lexer.space hspace1 empty empty
+spaceParser :: Parser ()
+spaceParser = Megaparsec.Lexer.space hspace1 empty empty
 
-lexeme :: Parser Tok -> Parser Token
-lexeme p = do
+tokenParser :: Parser Tok -> Parser Token
+tokenParser p = do
   startingOffset <- getOffset
   tok <- p
   endingOffset <- getOffset
-  space
   pure $ Token tok startingOffset endingOffset
+
+lexemeParser :: Parser Tok -> Parser Token
+lexemeParser p = tokenParser p <* spaceParser
 
 reservedAlphaWords :: [(Text, Tok)]
 reservedAlphaWords =
@@ -65,7 +73,7 @@ reservedAlphaWords =
 
 reservedAlphaWordsParser :: Parser Token
 reservedAlphaWordsParser = do
-  lexeme do
+  lexemeParser do
     tok <- choice $ fmap (\(str, tok) -> string str $> tok) reservedAlphaWords
     notFollowedBy alphaNumChar
     pure tok
@@ -80,7 +88,6 @@ reservedSyms =
   , (",", TokComma)
   , (">", TokGreaterThan)
   , ("-", TokMinus)
-  , ("\n", TokNewline)
   , ("(", TokOpenParen)
   , ("{", TokOpenCurlyBrace)
   , ("[", TokOpenSquareBracket)
@@ -89,12 +96,20 @@ reservedSyms =
 
 reservedSymsParser :: Parser Token
 reservedSymsParser = do
-  lexeme (choice $ fmap (\(str, tok) -> string str $> tok) reservedSyms)
+  lexemeParser (choice $ fmap (\(str, tok) -> string str $> tok) reservedSyms)
 
 identifierParser :: Parser Token
 identifierParser = do
-  lexeme do
-    firstChar <- asciiChar
+  lexemeParser do
+    firstChar <- letterChar
     (remainingChars :: [Char]) <- many (alphaNumChar <|> char '-')
     let ident = pack (firstChar : remainingChars)
     pure $ TokIdentifier ident
+
+newlineParser :: Parser Token
+newlineParser = tokenParser (char '\n' $> TokNewline)
+
+indentParser :: Parser Token
+indentParser = tokenParser do
+  spaces <- some (char ' ')
+  pure $ TokIndent (mkPos $ length spaces)

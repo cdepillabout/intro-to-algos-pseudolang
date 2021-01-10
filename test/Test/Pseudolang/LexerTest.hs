@@ -3,7 +3,7 @@ module Test.Pseudolang.LexerTest where
 
 import Pseudolang.Prelude
 
-import Text.Megaparsec (eof, errorBundlePretty, parse)
+import Text.Megaparsec (eof, errorBundlePretty, mkPos, parse)
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 
 import Pseudolang.Lexer
@@ -34,4 +34,11 @@ test =
         , Token {token = TokEquals, startPos = 19, endPos = 20}
         , Token {token = TokDownTo, startPos = 21, endPos = 27}
         , Token {token = TokComma, startPos = 28, endPos = 29}
+        ]
+    it "test4" $ do
+      parserTest tokenizer "hello\n  bye"
+        [ Token {token = TokIdentifier "hello", startPos = 0, endPos = 5}
+        , Token {token = TokNewline, startPos = 5, endPos = 6}
+        , Token {token = TokIndent (mkPos 2), startPos = 6, endPos = 8}
+        , Token {token = TokIdentifier "bye", startPos = 8, endPos = 11}
         ]
