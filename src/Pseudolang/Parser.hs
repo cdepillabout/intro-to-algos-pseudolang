@@ -46,6 +46,7 @@ data Expr
   | ExprNegate Expr
   | ExprParens Expr
   | ExprPlus Expr Expr
+  | ExprVar Identifier
   deriving stock (Eq, Ord, Show)
 
 newtype Identifier = Identifier Text
@@ -81,7 +82,7 @@ assignmentParser = do
   pure $ Assignment ident expr
 
 exprParser :: Parser Expr
-exprParser = makeExprParser term table <?> "expression"
+exprParser = makeExprParser termParser exprTable <?> "expression"
 
 parensParser :: Parser Expr
 parensParser = do
@@ -90,14 +91,15 @@ parensParser = do
   void $ tokenParser' TokCloseParen
   pure expr
 
-term :: Parser Expr
-term =
+termParser :: Parser Expr
+termParser =
   parensParser
   -- <|> integer
+  <|> (fmap ExprVar identParser)
   <?> "term"
 
-table :: [[Operator Parser Expr]]
-table =
+exprTable :: [[Operator Parser Expr]]
+exprTable =
   [ [ prefix (tokenParser' TokMinus) ExprNegate
     ]
   -- , [ binary "*" (*)
