@@ -31,4 +31,4 @@ test :: Spec
 test =
   describe "Parser" $ do
     it "test1" $ do
-      parserTest identParser [mkTok (TokIdentifier "foo")] (Identifier "fool")
+      parserTest identParser [mkTok (TokIdentifier "foo")] (Identifier "foo")

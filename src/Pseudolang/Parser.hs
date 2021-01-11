@@ -4,7 +4,8 @@ module Pseudolang.Parser where
 import Pseudolang.Prelude hiding (many, some, try)
 
 import qualified Data.Set as Set
-import Text.Megaparsec (ErrorItem, ParsecT, Pos, SourcePos, choice, getOffset, many, mkPos, notFollowedBy, some, token, try)
+import Control.Monad.Combinators.Expr (Operator(InfixL, Prefix), makeExprParser)
+import Text.Megaparsec (ErrorItem, ParsecT, Pos, SourcePos, choice, getOffset, many, mkPos, notFollowedBy, some, token, try, (<?>))
 import Text.Megaparsec.Char (alphaNumChar, char, hspace1, letterChar, string)
 
 import Pseudolang.Lexer (Tok(..), Token(Token))
@@ -38,21 +39,80 @@ data Assignment = Assignment Identifier Expr
 data ForDirection = DownTo | To
   deriving stock (Eq, Ord, Show)
 
-data Expr = Expr
+data Expr
+  = ExprGreaterThan Expr Expr
+  | ExprLessThan Expr Expr
+  | ExprMinus Expr Expr
+  | ExprNegate Expr
+  | ExprParens Expr
+  | ExprPlus Expr Expr
   deriving stock (Eq, Ord, Show)
 
 newtype Identifier = Identifier Text
   deriving stock (Eq, Ord, Show)
 
 identParser :: Parser Identifier
-identParser = do
-  ident <- token f Set.empty
-  pure $ Identifier ident
+identParser = tokenParser f
   where
-    f :: Token -> Maybe Text
-    f (Token (TokIdentifier ident) _ _) = Just ident
+    f :: Tok -> Maybe Identifier
+    f (TokIdentifier ident) = Just (Identifier ident)
     f _ = Nothing
 
--- assignmentParser :: Parser Assignment
--- assignmentParser = do
---   ident <- token 
+tokenParser :: forall a. (Tok -> Maybe a) -> Parser a
+tokenParser f = token go Set.empty
+  where
+    go :: Token -> Maybe a
+    go (Token t _ _) = f t
+
+tokenParser' :: Tok -> Parser ()
+tokenParser' tok = tokenParser f
+  where
+    f :: Tok -> Maybe ()
+    f t = if t == tok then Just () else Nothing
+
+equalsParser :: Parser ()
+equalsParser = tokenParser' TokEquals
+
+assignmentParser :: Parser Assignment
+assignmentParser = do
+  ident <- identParser
+  equalsParser
+  expr <- exprParser
+  pure $ Assignment ident expr
+
+exprParser :: Parser Expr
+exprParser = makeExprParser term table <?> "expression"
+
+parensParser :: Parser Expr
+parensParser = do
+  void $ tokenParser' TokOpenParen
+  expr <- exprParser
+  void $ tokenParser' TokCloseParen
+  pure expr
+
+term :: Parser Expr
+term =
+  parensParser
+  -- <|> integer
+  <?> "term"
+
+table :: [[Operator Parser Expr]]
+table =
+  [ [ prefix (tokenParser' TokMinus) ExprNegate
+    ]
+  -- , [ binary "*" (*)
+  --   , binary "/" div
+  --   ]
+  , [ binary (tokenParser' TokPlus) ExprPlus
+    , binary (tokenParser' TokMinus) ExprMinus
+    ]
+  , [ binary (tokenParser' TokLessThan) ExprLessThan
+    , binary (tokenParser' TokGreaterThan) ExprGreaterThan
+    ]
+  ]
+  where
+    binary :: Parser () -> (Expr -> Expr -> Expr) -> Operator Parser Expr
+    binary parser exprCreator = InfixL (parser $> exprCreator)
+
+    prefix :: Parser () -> (Expr -> Expr) -> Operator Parser Expr
+    prefix parser exprCreator = Prefix (parser $> exprCreator)
