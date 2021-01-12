@@ -55,6 +55,34 @@ data Expr
 newtype Identifier = Identifier Text
   deriving stock (Eq, Ord, Show)
 
+statementsParser :: Parser [Statement]
+statementsParser = do
+  some statementParser
+
+statementParser :: Parser Statement
+statementParser = do
+  indentAmount <- getCurrIdent
+  tokenParser f
+  forParser <|> assignmentParser
+  where
+    f :: Int -> Tok -> Maybe ()
+    f indentAmount (TokIndent i) | indentAmount == i = Just ()
+    f _ _ = Nothing
+
+forParser :: Parser Statement
+forParser = do
+  tokenParser' TokFor
+  assignment <- assignmentParser
+  forDirection <- forDirectionParser
+  goal <- exprParser
+  void (tokenParser' TokNewline)
+  indented statementsParser
+
+-- TODO: Figure out how to work with indents.  Do I need a StateT around my
+-- ParsecT, or the other way around?
+indented :: Parser a -> Parser a
+indented = undefined
+
 identParser :: Parser Identifier
 identParser = tokenParser f
   where
