@@ -20,6 +20,7 @@ data Tok
   | TokCloseParen
   | TokCloseSquareBracket
   | TokComma
+  | TokDivide
   | TokDownTo
   | TokEquals
   | TokFor
@@ -27,6 +28,7 @@ data Tok
   | TokGreaterThan
   | TokIdentifier Text -- ^ Identifier name.
   | TokIndent Pos -- ^ How many spaces this indent includes.
+  | TokInteger Integer
   | TokLessThan
   | TokMinus
   | TokNewline
@@ -35,6 +37,7 @@ data Tok
   | TokOpenSquareBracket
   | TokPlus
   | TokReturn
+  | TokTimes
   | TokTo
   deriving (Eq, Ord, Show)
 
@@ -49,6 +52,7 @@ lexer =
     , identifierParser
     , newlineParser
     , indentParser
+    , integerParser
     ]
 
 spaceParser :: Parser ()
@@ -82,18 +86,20 @@ reservedAlphaWordsParser = do
 
 reservedSyms :: [(Text, Tok)]
 reservedSyms =
-  [ ("=", TokEquals)
-  , ("<", TokLessThan)
+  [ ("(", TokOpenParen)
   , (")", TokCloseParen)
-  , ("}", TokCloseCurlyBrace)
-  , ("]", TokCloseSquareBracket)
-  , (",", TokComma)
-  , (">", TokGreaterThan)
-  , ("-", TokMinus)
-  , ("(", TokOpenParen)
-  , ("{", TokOpenCurlyBrace)
-  , ("[", TokOpenSquareBracket)
+  , ("*", TokTimes)
   , ("+", TokPlus)
+  , (",", TokComma)
+  , ("-", TokMinus)
+  , ("/", TokDivide)
+  , ("<", TokLessThan)
+  , ("=", TokEquals)
+  , (">", TokGreaterThan)
+  , ("[", TokOpenSquareBracket)
+  , ("]", TokCloseSquareBracket)
+  , ("{", TokOpenCurlyBrace)
+  , ("}", TokCloseCurlyBrace)
   ]
 
 reservedSymsParser :: Parser Token
@@ -107,6 +113,9 @@ identifierParser = do
     (remainingChars :: [Char]) <- many (alphaNumChar <|> char '-')
     let ident = pack (firstChar : remainingChars)
     pure $ TokIdentifier ident
+
+integerParser :: Parser Token
+integerParser = tokenParser (fmap TokInteger Megaparsec.Lexer.decimal)
 
 newlineParser :: Parser Token
 newlineParser = tokenParser (char '\n' $> TokNewline)

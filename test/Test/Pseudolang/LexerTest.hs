@@ -42,3 +42,8 @@ test =
         , Token {token = TokIndent (mkPos 2), startPos = 6, endPos = 8}
         , Token {token = TokIdentifier "bye", startPos = 8, endPos = 11}
         ]
+    it "test4" $ do
+      parserTest tokenizer "hello 123"
+        [ Token {token = TokIdentifier "hello", startPos = 0, endPos = 5}
+        , Token {token = TokInteger 123, startPos = 6, endPos = 9}
+        ]

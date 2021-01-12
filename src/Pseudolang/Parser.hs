@@ -5,7 +5,7 @@ import Pseudolang.Prelude hiding (many, some, try)
 
 import qualified Data.Set as Set
 import Control.Monad.Combinators.Expr (Operator(InfixL, Prefix), makeExprParser)
-import Text.Megaparsec (ErrorItem, ParsecT, Pos, SourcePos, choice, getOffset, many, mkPos, notFollowedBy, some, token, try, (<?>))
+import Text.Megaparsec (ErrorItem, ParsecT, Pos, SourcePos, between, choice, getOffset, many, mkPos, notFollowedBy, some, token, try, (<?>))
 import Text.Megaparsec.Char (alphaNumChar, char, hspace1, letterChar, string)
 
 import Pseudolang.Lexer (Tok(..), Token(Token))
@@ -40,12 +40,15 @@ data ForDirection = DownTo | To
   deriving stock (Eq, Ord, Show)
 
 data Expr
-  = ExprGreaterThan Expr Expr
+  = ExprDivide Expr Expr
+  | ExprGreaterThan Expr Expr
+  | ExprInteger Integer
   | ExprLessThan Expr Expr
   | ExprMinus Expr Expr
   | ExprNegate Expr
   | ExprParens Expr
   | ExprPlus Expr Expr
+  | ExprTimes Expr Expr
   | ExprVar Identifier
   deriving stock (Eq, Ord, Show)
 
@@ -74,6 +77,13 @@ tokenParser' tok = tokenParser f
 equalsParser :: Parser ()
 equalsParser = tokenParser' TokEquals
 
+integerParser :: Parser Expr
+integerParser = tokenParser f
+  where
+    f :: Tok -> Maybe Expr
+    f (TokInteger i) = Just (ExprInteger i)
+    f _ = Nothing
+
 assignmentParser :: Parser Assignment
 assignmentParser = do
   ident <- identParser
@@ -84,17 +94,10 @@ assignmentParser = do
 exprParser :: Parser Expr
 exprParser = makeExprParser termParser exprTable <?> "expression"
 
-parensParser :: Parser Expr
-parensParser = do
-  void $ tokenParser' TokOpenParen
-  expr <- exprParser
-  void $ tokenParser' TokCloseParen
-  pure expr
-
 termParser :: Parser Expr
 termParser =
-  parensParser
-  -- <|> integer
+  between (tokenParser' TokOpenParen) (tokenParser' TokCloseParen) exprParser
+  <|> integerParser
   <|> (fmap ExprVar identParser)
   <?> "term"
 
@@ -102,9 +105,9 @@ exprTable :: [[Operator Parser Expr]]
 exprTable =
   [ [ prefix (tokenParser' TokMinus) ExprNegate
     ]
-  -- , [ binary "*" (*)
-  --   , binary "/" div
-  --   ]
+  , [ binary (tokenParser' TokTimes) ExprTimes
+    , binary (tokenParser' TokDivide) ExprDivide
+    ]
   , [ binary (tokenParser' TokPlus) ExprPlus
     , binary (tokenParser' TokMinus) ExprMinus
     ]
