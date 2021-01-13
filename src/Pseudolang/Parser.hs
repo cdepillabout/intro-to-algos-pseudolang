@@ -15,12 +15,7 @@ type IndentAmount = Int
 
 type Parser = ReaderT IndentAmount (ParsecT Void [Token] Identity)
 
-newtype AST = AST { unAST :: TopLevelList }
-  deriving stock (Eq, Ord, Show)
-
-newtype TopLevelList = TopLevelList
-  { unTopLevelList :: NonEmpty (Either Statement FuncDef)
-  }
+newtype AST = AST { unAST :: [TopLevel] }
   deriving stock (Eq, Ord, Show)
 
 data TopLevel = TopLevelStatement Statement | TopLevelFuncDef FuncDef
@@ -58,6 +53,13 @@ data Expr
 newtype Identifier = Identifier Text
   deriving stock (Eq, Ord, Show)
 
+astParser :: Parser AST
+astParser = fmap AST $ many topLevelParser
+
+topLevelParser :: Parser TopLevel
+topLevelParser = do
+  fmap TopLevelStatement statementParser
+
 statementsParser :: Parser [Statement]
 statementsParser = do
   some statementParser
@@ -75,7 +77,8 @@ getCurrIndent = ask
 indentParser :: Parser ()
 indentParser = do
   expectedIndentAmount <- getCurrIndent
-  tokenParser (f expectedIndentAmount)
+  when (expectedIndentAmount > 0) $
+    tokenParser (f expectedIndentAmount)
   where
     f :: Int -> Tok -> Maybe ()
     f indentAmount (TokIndent i) | indentAmount == unPos i = Just ()

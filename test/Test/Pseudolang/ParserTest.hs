@@ -99,3 +99,35 @@ test =
                 (ExprInteger 2)
             )
       parserTest exprParser input expectedAST
+    it "test6" $ do
+      let input = "x = 1 + 2"
+          expectedAST =
+            StatementAssignment
+              (Assignment
+                (Identifier "x")
+                (ExprPlus (ExprInteger 1) (ExprInteger 2))
+              )
+      parserTest statementParser input expectedAST
+    it "test7" $ do
+      let input = "x = 1 + 2"
+          expectedAST =
+            [ StatementAssignment
+                (Assignment
+                  (Identifier "x")
+                  (ExprPlus (ExprInteger 1) (ExprInteger 2))
+                )
+            ]
+      parserTest statementsParser input expectedAST
+    it "test8" $ do
+      let input = "x = 1 + 2"
+          expectedAST =
+            AST
+              [ TopLevelStatement
+                  (StatementAssignment
+                    (Assignment
+                      (Identifier "x")
+                      (ExprPlus (ExprInteger 1) (ExprInteger 2))
+                    )
+                  )
+              ]
+      parserTest astParser input expectedAST
