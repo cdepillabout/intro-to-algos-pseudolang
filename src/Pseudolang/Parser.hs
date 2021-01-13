@@ -23,7 +23,7 @@ data TopLevel = TopLevelStatement Statement | TopLevelFuncDef FuncDef
 
 data Statement
   = StatementAssignment Assignment
-  | StatementForLoop Assignment ForDirection Expr [Statement]
+  | StatementForLoop ForLoop
   | StatementIf Expr [Statement]
   | StatementReturn Expr
   deriving stock (Eq, Ord, Show)
@@ -32,6 +32,9 @@ data FuncDef = FuncDef Identifier [Identifier] [Statement]
   deriving stock (Eq, Ord, Show)
 
 data Assignment = Assignment Identifier Expr
+  deriving stock (Eq, Ord, Show)
+
+data ForLoop = FooLoop Assignment ForDirection Expr [Statement]
   deriving stock (Eq, Ord, Show)
 
 data ForDirection = ForDirectionDownTo | ForDirectionTo
@@ -66,10 +69,20 @@ statementsParser = do
 
 statementParser :: Parser Statement
 statementParser = do
+  statementForLoopParser <|> statementAssignmentParser
+
+statementAssignmentParser :: Parser Statement
+statementAssignmentParser = do
   indentParser
-  statement <- forParser <|> (fmap StatementAssignment assignmentParser)
-  (newlineParser <|> eof)
-  pure statement
+  assignment <- assignmentParser
+  newlineParser <|> eof
+  pure $ StatementAssignment assignment
+
+statementForLoopParser :: Parser Statement
+statementForLoopParser = do
+  indentParser
+  forLoop <- forParser
+  pure $ StatementForLoop forLoop
 
 getCurrIndent :: Parser IndentAmount
 getCurrIndent = ask
@@ -87,7 +100,7 @@ indentParser = do
 newlineParser :: Parser ()
 newlineParser = tokenParser' TokNewline
 
-forParser :: Parser Statement
+forParser :: Parser ForLoop
 forParser = do
   tokenParser' TokFor
   assignment <- assignmentParser
@@ -95,15 +108,13 @@ forParser = do
   goal <- exprParser
   newlineParser
   statements <- indented statementsParser
-  pure $ StatementForLoop assignment forDirection goal statements
+  pure $ FooLoop assignment forDirection goal statements
 
 forDirectionParser :: Parser ForDirection
 forDirectionParser =
   (tokenParser' TokDownTo $> ForDirectionDownTo) <|>
   (tokenParser' TokTo $> ForDirectionTo)
 
--- TODO: Figure out how to work with indents.  Do I need a StateT around my
--- ParsecT, or the other way around?
 indented :: Parser a -> Parser a
 indented parser = do
   local (+ 2) parser
