@@ -3,7 +3,7 @@ module Pseudolang.Lexer where
 
 import Pseudolang.Prelude hiding (many, some, try)
 
-import Text.Megaparsec (ParsecT, Pos, SourcePos, choice, getOffset, many, mkPos, notFollowedBy, some, try)
+import Text.Megaparsec (ParsecT, Pos, SourcePos, choice, eof, getOffset, many, mkPos, notFollowedBy, some, try)
 import Text.Megaparsec.Char (alphaNumChar, char, hspace1, letterChar, string)
 import qualified Text.Megaparsec.Char.Lexer as Megaparsec.Lexer
 
@@ -42,7 +42,10 @@ data Tok
   deriving (Eq, Ord, Show)
 
 tokenizer :: Parser [Token]
-tokenizer = some lexer
+tokenizer = tokenizer' <* eof
+
+tokenizer' :: Parser [Token]
+tokenizer' = some lexer
 
 lexer :: Parser Token
 lexer =
@@ -115,7 +118,7 @@ identifierParser = do
     pure $ TokIdentifier ident
 
 integerParser :: Parser Token
-integerParser = tokenParser (fmap TokInteger Megaparsec.Lexer.decimal)
+integerParser = lexemeParser (fmap TokInteger Megaparsec.Lexer.decimal)
 
 newlineParser :: Parser Token
 newlineParser = tokenParser (char '\n' $> TokNewline)

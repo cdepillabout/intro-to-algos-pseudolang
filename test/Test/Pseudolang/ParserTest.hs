@@ -3,13 +3,15 @@ module Test.Pseudolang.ParserTest where
 
 import Pseudolang.Prelude
 
-import Text.Megaparsec (eof, errorBundlePretty, mkPos, parse)
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
+import Text.Megaparsec (eof, errorBundlePretty, mkPos, parse)
+import Text.Pretty.Simple (pShow)
 
-import Pseudolang.Lexer (Tok(..), Token(Token))
+import Pseudolang.Lexer (Tok(..), Token(Token), tokenizer)
 import Pseudolang.Parser
+import qualified Test.Pseudolang.LexerTest as Test.Lexer
 
-parserTest ::
+parserFromTokenizerTest ::
      ( Eq a
      , Show a
      -- , VisualStream [Token]
@@ -18,11 +20,31 @@ parserTest ::
   -> [Token]
   -> a
   -> IO ()
-parserTest parser input expectedRes = do
-  let eitherRes = parse (parser <* eof) "" input
+parserFromTokenizerTest readerTParser input expectedRes = do
+  let initialIndentAmount = 0
+      parser = runReaderT readerTParser initialIndentAmount
+      eitherRes = parse (parser <* eof) "" input
   case eitherRes of
     Right res -> res `shouldBe` expectedRes
-    Left err -> expectationFailure $ show err
+    Left err -> expectationFailure $ unpack $ pShow err
+
+parserTest ::
+     ( Eq a
+     , Show a
+     -- , VisualStream [Token]
+     )
+  => Parser a
+  -> Text
+  -> a
+  -> IO ()
+parserTest readerTParser input expectedRes = do
+  lexerOutput <- Test.Lexer.parserTest' tokenizer input
+  let initialIndentAmount = 0
+      parser = runReaderT readerTParser initialIndentAmount
+      eitherRes = parse (parser <* eof) "" lexerOutput
+  case eitherRes of
+    Right res -> res `shouldBe` expectedRes
+    Left err -> expectationFailure $ unpack $ pShow err
 
 mkTok :: Tok -> Token
 mkTok tok = Token tok 0 0
@@ -34,7 +56,7 @@ test :: Spec
 test =
   describe "Parser" $ do
     it "test1" $ do
-      parserTest identParser [mkTok (TokIdentifier "foo")] (Identifier "foo")
+      parserFromTokenizerTest identParser [mkTok (TokIdentifier "foo")] (Identifier "foo")
     it "test2" $ do
       let inputTokens =
             [ TokIdentifier "foo"
@@ -42,7 +64,7 @@ test =
             , TokIdentifier "bar"
             ]
           expectedAST = ExprPlus (ExprVar (Identifier "foo")) (ExprVar (Identifier "bar"))
-      parserTest exprParser (mkToks inputTokens) expectedAST
+      parserFromTokenizerTest exprParser (mkToks inputTokens) expectedAST
     it "test3" $ do
       let inputTokens =
             [ TokInteger 3
@@ -58,4 +80,22 @@ test =
                 (ExprInteger 4)
                 (ExprInteger 5)
               )
-      parserTest exprParser (mkToks inputTokens) expectedAST
+      parserFromTokenizerTest exprParser (mkToks inputTokens) expectedAST
+    it "test4" $ do
+      let input = "x = 1 + 2"
+          expectedAST =
+            Assignment
+              (Identifier "x")
+              (ExprPlus
+                (ExprInteger 1)
+                (ExprInteger 2)
+              )
+      parserTest assignmentParser input expectedAST
+    it "test5" $ do
+      let input = "1 + 2"
+          expectedAST =
+            (ExprPlus
+                (ExprInteger 1)
+                (ExprInteger 2)
+            )
+      parserTest exprParser input expectedAST

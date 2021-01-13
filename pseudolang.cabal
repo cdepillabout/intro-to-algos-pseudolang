@@ -41,7 +41,9 @@ library
     , classy-prelude
     , containers
     , megaparsec
+    , mtl
     , parser-combinators
+    , pretty-simple
   default-extensions:
     BangPatterns
     BinaryLiterals

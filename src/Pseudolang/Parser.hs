@@ -3,14 +3,17 @@ module Pseudolang.Parser where
 
 import Pseudolang.Prelude hiding (many, some, try)
 
-import qualified Data.Set as Set
 import Control.Monad.Combinators.Expr (Operator(InfixL, Prefix), makeExprParser)
-import Text.Megaparsec (ErrorItem, ParsecT, Pos, SourcePos, between, choice, getOffset, many, mkPos, notFollowedBy, some, token, try, (<?>))
+import Control.Monad.Reader (local)
+import qualified Data.Set as Set
+import Text.Megaparsec (ErrorItem, ParsecT, Pos, SourcePos, between, choice, eof, getOffset, many, mkPos, notFollowedBy, some, token, try, unPos, (<?>))
 import Text.Megaparsec.Char (alphaNumChar, char, hspace1, letterChar, string)
 
 import Pseudolang.Lexer (Tok(..), Token(Token))
 
-type Parser = ParsecT Void [Token] Identity
+type IndentAmount = Int
+
+type Parser = ReaderT IndentAmount (ParsecT Void [Token] Identity)
 
 newtype AST = AST { unAST :: TopLevelList }
   deriving stock (Eq, Ord, Show)
@@ -36,7 +39,7 @@ data FuncDef = FuncDef Identifier [Identifier] [Statement]
 data Assignment = Assignment Identifier Expr
   deriving stock (Eq, Ord, Show)
 
-data ForDirection = DownTo | To
+data ForDirection = ForDirectionDownTo | ForDirectionTo
   deriving stock (Eq, Ord, Show)
 
 data Expr
@@ -61,13 +64,25 @@ statementsParser = do
 
 statementParser :: Parser Statement
 statementParser = do
-  indentAmount <- getCurrIdent
-  tokenParser f
-  forParser <|> assignmentParser
+  indentParser
+  statement <- forParser <|> (fmap StatementAssignment assignmentParser)
+  (newlineParser <|> eof)
+  pure statement
+
+getCurrIndent :: Parser IndentAmount
+getCurrIndent = ask
+
+indentParser :: Parser ()
+indentParser = do
+  expectedIndentAmount <- getCurrIndent
+  tokenParser (f expectedIndentAmount)
   where
     f :: Int -> Tok -> Maybe ()
-    f indentAmount (TokIndent i) | indentAmount == i = Just ()
+    f indentAmount (TokIndent i) | indentAmount == unPos i = Just ()
     f _ _ = Nothing
+
+newlineParser :: Parser ()
+newlineParser = tokenParser' TokNewline
 
 forParser :: Parser Statement
 forParser = do
@@ -75,13 +90,20 @@ forParser = do
   assignment <- assignmentParser
   forDirection <- forDirectionParser
   goal <- exprParser
-  void (tokenParser' TokNewline)
-  indented statementsParser
+  newlineParser
+  statements <- indented statementsParser
+  pure $ StatementForLoop assignment forDirection goal statements
+
+forDirectionParser :: Parser ForDirection
+forDirectionParser =
+  (tokenParser' TokDownTo $> ForDirectionDownTo) <|>
+  (tokenParser' TokTo $> ForDirectionTo)
 
 -- TODO: Figure out how to work with indents.  Do I need a StateT around my
 -- ParsecT, or the other way around?
 indented :: Parser a -> Parser a
-indented = undefined
+indented parser = do
+  local (+ 2) parser
 
 identParser :: Parser Identifier
 identParser = tokenParser f
