@@ -1,8 +1,10 @@
+{-# LANGUAGE QuasiQuotes #-}
 
 module Test.Pseudolang.ParserTest where
 
 import Pseudolang.Prelude
 
+import Data.String.Interpolate (__i)
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 import Text.Megaparsec (eof, errorBundlePretty, mkPos, parse)
 import Text.Pretty.Simple (pShow)
@@ -33,14 +35,22 @@ parserTest ::
      , Show a
      -- , VisualStream [Token]
      )
-  => Parser a
+  => Parser a -> Text -> a -> IO ()
+parserTest = parserTestWithIndent 0
+
+parserTestWithIndent ::
+     ( Eq a
+     , Show a
+     -- , VisualStream [Token]
+     )
+  => Int -- ^ Initial indent amount
+  -> Parser a
   -> Text
   -> a
   -> IO ()
-parserTest readerTParser input expectedRes = do
+parserTestWithIndent initialIndentAmount readerTParser input expectedRes = do
   lexerOutput <- Test.Lexer.parserTest' tokenizer input
-  let initialIndentAmount = 0
-      parser = runReaderT readerTParser initialIndentAmount
+  let parser = runReaderT readerTParser initialIndentAmount
       eitherRes = parse (parser <* eof) "" lexerOutput
   case eitherRes of
     Right res -> res `shouldBe` expectedRes
@@ -131,3 +141,66 @@ test =
                   )
               ]
       parserTest astParser input expectedAST
+    it "test9" $ do
+      let input =
+            [__i|
+              for x = 3 to 7
+                a = 4
+             |]
+          expectedAST =
+            AST
+              [ TopLevelStatement
+                  (StatementForLoop
+                    (ForLoop
+                      (Assignment
+                        (Identifier "x")
+                        (ExprInteger 3))
+                      ForDirectionTo
+                      (ExprInteger 7)
+                      [ StatementAssignment
+                          (Assignment (Identifier "a") (ExprInteger 4))
+                      ]
+                    )
+                  )
+              ]
+      parserTest astParser input expectedAST
+    it "test10" $ do
+      let input =
+            [__i|
+              a = 4
+              b = 3
+             |]
+          expectedAST =
+            AST
+              [ TopLevelStatement
+                  (StatementAssignment (Assignment (Identifier "a") (ExprInteger 4)))
+              , TopLevelStatement
+                  (StatementAssignment (Assignment (Identifier "b") (ExprInteger 3)))
+              ]
+      parserTest astParser input expectedAST
+    it "test11" $ do
+      let input =
+            [__i|
+              for x = 3 to 7
+                b = 3
+             |]
+          expectedAST =
+            ForLoop (Assignment (Identifier "x") (ExprInteger 3)) ForDirectionTo (ExprInteger 7)
+              [ StatementAssignment (Assignment (Identifier "b") (ExprInteger 3))
+              ]
+      parserTest forParser input expectedAST
+    it "test12" $ do
+      let input = "  a = 4\n  b = 3"
+          expectedAST =
+            [ StatementAssignment (Assignment (Identifier "a") (ExprInteger 4))
+            , StatementAssignment (Assignment (Identifier "b") (ExprInteger 3))
+            ]
+      parserTestWithIndent 2 statementsParser input expectedAST
+    it "test13" $ do
+      let input = "a = 4"
+          expectedAST = StatementAssignment (Assignment (Identifier "a") (ExprInteger 4))
+      parserTestWithIndent 2 statementAssignmentParser input expectedAST
+    it "test14" $ do
+      let input = "  a = 4"
+          expectedAST = StatementAssignment (Assignment (Identifier "a") (ExprInteger 4))
+      parserTestWithIndent 2 statementParser input expectedAST

@@ -155,4 +155,5 @@ test-suite pseudolang-test
     , hspec
     , megaparsec
     , pseudolang
+    , string-interpolate
   default-language: Haskell2010

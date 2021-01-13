@@ -34,7 +34,7 @@ data FuncDef = FuncDef Identifier [Identifier] [Statement]
 data Assignment = Assignment Identifier Expr
   deriving stock (Eq, Ord, Show)
 
-data ForLoop = FooLoop Assignment ForDirection Expr [Statement]
+data ForLoop = ForLoop Assignment ForDirection Expr [Statement]
   deriving stock (Eq, Ord, Show)
 
 data ForDirection = ForDirectionDownTo | ForDirectionTo
@@ -69,18 +69,17 @@ statementsParser = do
 
 statementParser :: Parser Statement
 statementParser = do
-  statementForLoopParser <|> statementAssignmentParser
+  indentParser
+  statementForLoopParser <|> statementAssignmentParser <?> "statement"
 
 statementAssignmentParser :: Parser Statement
 statementAssignmentParser = do
-  indentParser
-  assignment <- assignmentParser
-  newlineParser <|> eof
+  assignment <- assignmentParser <?> "assignment statement"
+  newlineParser <|> eof <?> "newline or EOF after assignment statement"
   pure $ StatementAssignment assignment
 
 statementForLoopParser :: Parser Statement
 statementForLoopParser = do
-  indentParser
   forLoop <- forParser
   pure $ StatementForLoop forLoop
 
@@ -103,12 +102,12 @@ newlineParser = tokenParser' TokNewline
 forParser :: Parser ForLoop
 forParser = do
   tokenParser' TokFor
-  assignment <- assignmentParser
-  forDirection <- forDirectionParser
-  goal <- exprParser
-  newlineParser
-  statements <- indented statementsParser
-  pure $ FooLoop assignment forDirection goal statements
+  assignment <- assignmentParser <?> "for loop assignment"
+  forDirection <- forDirectionParser <?> "for loop direction (to / downto)"
+  goal <- exprParser <?> "for loop goal expr"
+  newlineParser <?> "newline after for loop line"
+  statements <- indented statementsParser <?> "indented statements in for loop"
+  pure $ ForLoop assignment forDirection goal statements
 
 forDirectionParser :: Parser ForDirection
 forDirectionParser =
