@@ -30,6 +30,7 @@ library
   ghc-options:
     -Wall -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-unused-imports -Wno-unused-top-binds -O2
   exposed-modules:
+    Pseudolang.Interpreter
     Pseudolang.Lexer
     Pseudolang.Main
     Pseudolang.Parser

@@ -24,8 +24,14 @@ data TopLevel = TopLevelStatement Statement | TopLevelFuncDef FuncDef
 data Statement
   = StatementAssignment Assignment
   | StatementForLoop ForLoop
-  | StatementIf Expr [Statement]
+  | StatementIf Expr (NonEmpty Statement) (Maybe ElseIf)
   | StatementReturn Expr
+  deriving stock (Eq, Ord, Show)
+
+data ElseIf = ElseIf
+  { elseIfs :: [(Expr, NonEmpty Statement)]
+  , elseStatements :: NonEmpty Statement
+  }
   deriving stock (Eq, Ord, Show)
 
 data FuncDef = FuncDef Identifier [Identifier] [Statement]
