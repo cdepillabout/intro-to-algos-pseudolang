@@ -12,15 +12,10 @@ import Pseudolang.Interpreter
 import Pseudolang.Parser (Identifier(..))
 
 interpreterTest :: Text -> (Map Identifier Val) -> IO ()
-interpreterTest input expectedMapping = do
-  -- let initialIndentAmount = 0
-  --     parser = runReaderT readerTParser initialIndentAmount
-  --     eitherRes = parse (parser <* eof) "" input
-  -- case eitherRes of
-  --   Right res -> res `shouldBe` expectedRes
-  --   Left err -> expectationFailure $ unpack $ pShow err
-  resMapping <- parseAndInterpretToMapping input
-  resMapping `shouldBe` expectedMapping
+interpreterTest input expectedVarMapping = do
+  resInterpState <- parseAndInterpretToInterpState input
+  let resVarMapping = interpStateVars resInterpState
+  resVarMapping `shouldBe` expectedVarMapping
 
 test :: Spec
 test =

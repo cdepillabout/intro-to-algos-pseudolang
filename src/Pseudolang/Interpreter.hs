@@ -11,15 +11,50 @@ import Text.Pretty.Simple (pShow)
 import Pseudolang.Parser
 import qualified Pseudolang.Lexer as Lexer
 
-type Interpret = StateT (Map Identifier Val) IO
+type Interpret = StateT InterpState IO
+
+data InterpState = InterpState
+  { interpStateVars :: Map Identifier Val
+  , interpStateFuncs :: Map Identifier FunDef
+  }
+  deriving stock (Eq, Ord, Show)
+
+initialInterpState :: InterpState
+initialInterpState = InterpState mempty mempty
+
+addFunDef :: MonadState InterpState m => Identifier -> FunDef -> m ()
+addFunDef ident funDef =
+  modify
+    (\interpState ->
+       interpState
+       { interpStateFuncs = insertMap ident funDef (interpStateFuncs interpState)
+       }
+    )
+
+getVar :: MonadState InterpState m => Identifier -> m (Maybe Val)
+getVar ident =
+  gets (\interpState -> lookup ident (interpStateVars interpState))
+
+getVarMappings :: MonadState InterpState m => m (Map Identifier Val)
+getVarMappings = gets interpStateVars
+
+setVar :: MonadState InterpState m => Identifier -> Val -> m ()
+setVar ident val = do
+  modify
+    (\interpState ->
+       interpState
+       { interpStateVars = insertMap ident val (interpStateVars interpState)
+       }
+    )
 
 data Val
   = ValBool !Bool
   | ValInt !Integer
   deriving stock (Eq, Ord, Show)
 
-parseAndInterpretToMappingWithInitial :: Text -> Map Identifier Val -> IO (Map Identifier Val)
-parseAndInterpretToMappingWithInitial inputText initialMapping = do
+parseAndInterpretToInterpStateWithInitial ::
+     Text -> InterpState -> IO InterpState
+parseAndInterpretToInterpStateWithInitial inputText initInterpState = do
   let lexerOutput = parse Lexer.tokenizer "" inputText
   case lexerOutput of
     Left err -> do
@@ -29,45 +64,50 @@ parseAndInterpretToMappingWithInitial inputText initialMapping = do
           parser = runReaderT astParser initialIndentAmount
           eitherAST = parse (parser <* eof) "" tokens
       case eitherAST of
-        Right ast -> interpretToMappingWithInitial ast initialMapping
+        Right ast -> interpretToInterpStateWithInitial ast initInterpState
         Left err -> error $ "Error in parsing: " <> (unpack $ pShow err)
 
-parseAndInterpretToMapping :: Text -> IO (Map Identifier Val)
-parseAndInterpretToMapping text =
-  parseAndInterpretToMappingWithInitial text mempty
+parseAndInterpretToInterpState :: Text -> IO InterpState
+parseAndInterpretToInterpState text =
+  parseAndInterpretToInterpStateWithInitial text initialInterpState
 
 parseAndInterpret :: Text -> IO ()
-parseAndInterpret text = void $ parseAndInterpretToMapping text
+parseAndInterpret text = void $ parseAndInterpretToInterpState text
 
-interpretToMapping :: AST -> IO (Map Identifier Val)
-interpretToMapping ast = interpretToMappingWithInitial ast mempty
+interpretToInterpState :: AST -> IO InterpState
+interpretToInterpState ast = interpretToInterpStateWithInitial ast initialInterpState
 
-interpretToMappingWithInitial :: AST -> Map Identifier Val -> IO (Map Identifier Val)
-interpretToMappingWithInitial ast initialMapping =
-  execStateT (interpretAST ast) initialMapping
+interpretToInterpStateWithInitial :: AST -> InterpState -> IO InterpState
+interpretToInterpStateWithInitial ast initInterpState =
+  execStateT (interpretAST ast) initInterpState
 
 interpret :: AST -> IO ()
-interpret ast = void $ interpretToMapping ast
+interpret ast = void $ interpretToInterpState ast
 
 interpretAST :: AST -> Interpret ()
 interpretAST (AST topLevels) = for_ topLevels interpretTopLevel
 
 interpretTopLevel :: TopLevel -> Interpret ()
 interpretTopLevel = \case
-  TopLevelFunDef _ -> undefined
+  TopLevelFunDef funDef -> interpretFunDef funDef
   TopLevelStatement statement -> interpretStatement statement
+
+interpretFunDef :: FunDef -> Interpret ()
+interpretFunDef funDef@(FunDef funName _ _) =
+  addFunDef funName funDef
 
 interpretStatement :: Statement -> Interpret ()
 interpretStatement = \case
   StatementAssignment assignment -> interpretAssignment assignment
   StatementForLoop forLoop -> interpretForLoop forLoop
+  StatementFunCall funCall -> undefined
   StatementIf expr statements elseIf -> undefined
   StatementReturn expr -> undefined
 
 interpretAssignment :: Assignment -> Interpret ()
 interpretAssignment (Assignment identifier expr) = do
   val <- interpretExpr expr
-  modify (insertMap identifier val)
+  setVar identifier val
 
 interpretForLoop :: ForLoop -> Interpret ()
 interpretForLoop (ForLoop assignment@(Assignment identifier _) direction goalExpr bodyStatements) = do
@@ -87,7 +127,7 @@ interpretForLoop (ForLoop assignment@(Assignment identifier _) direction goalExp
       -- If there are no more statements left to interpret in the loop body,
       -- then we either increment or decrement the loop identifier, and then loop again.
       i <- getLoopIdentVal
-      modify (insertMap identifier (ValInt (identForModifier i)))
+      setVar identifier (ValInt (identForModifier i))
       loopWhileNotGoal
     loop (thisStatement : remainingStatements) = do
       interpretStatement thisStatement
@@ -103,10 +143,10 @@ interpretForLoop (ForLoop assignment@(Assignment identifier _) direction goalExp
 
     getLoopIdentVal :: Interpret Integer
     getLoopIdentVal = do
-      maybeIdentVal <- gets (lookup identifier)
+      maybeIdentVal <- getVar identifier
       case maybeIdentVal of
         Nothing -> do
-          mapping <- get
+          mapping <- getVarMappings
           fail $
             "The identifier (" <> show identifier <>
             ") doesn't have an value in the identifier mapping (" <>
@@ -117,7 +157,6 @@ interpretForLoop (ForLoop assignment@(Assignment identifier _) direction goalExp
             "The identifier (" <> show identifier <>
             ") in a for loop is a boolean and not an integer."
         Just (ValInt i) -> pure i
-  
 
 interpretExpr :: Expr -> Interpret Val
 interpretExpr = \case
@@ -129,6 +168,7 @@ interpretExpr = \case
     int1 <- interpretExprToInt expr1
     int2 <- interpretExprToInt expr2
     pure $ ValBool $ int1 > int2
+  ExprFunCall funCall -> undefined
   ExprInteger int -> pure $ ValInt int
   ExprLessThan expr1 expr2 -> do
     int1 <- interpretExprToInt expr1
@@ -151,7 +191,7 @@ interpretExpr = \case
     int2 <- interpretExprToInt expr2
     pure $ ValInt $ int1 * int2
   ExprVar identifier -> do
-    maybeVal <- gets (lookup identifier)
+    maybeVal <- getVar identifier
     case maybeVal of
       Nothing -> error $ "No value for identifier: " <> show identifier
       Just val -> pure val
