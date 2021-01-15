@@ -23,6 +23,8 @@ data TopLevel = TopLevelStatement Statement | TopLevelFunDef FunDef
 
 data Statement
   = StatementAssignment Assignment
+  | StatementExpr Expr
+  | StatementFunCall FunCall
   | StatementForLoop ForLoop
   | StatementIf Expr (NonEmpty Statement) (Maybe ElseIf)
   | StatementReturn Expr
@@ -37,6 +39,9 @@ data ElseIf = ElseIf
 data FunDef = FunDef Identifier [Identifier] [Statement]
   deriving stock (Eq, Ord, Show)
 
+data FunCall = FunCall Identifier [Expr]
+  deriving stock (Eq, Ord, Show)
+
 data Assignment = Assignment Identifier Expr
   deriving stock (Eq, Ord, Show)
 
@@ -48,6 +53,7 @@ data ForDirection = ForDirectionDownTo | ForDirectionTo
 
 data Expr
   = ExprDivide Expr Expr
+  | ExprFunCall FunCall
   | ExprGreaterThan Expr Expr
   | ExprInteger Integer
   | ExprLessThan Expr Expr
@@ -88,13 +94,22 @@ statementsParser = do
 statementParser :: Parser Statement
 statementParser = do
   indentParser
-  statementForLoopParser <|> statementAssignmentParser <?> "statement"
+  statementForLoopParser <|>
+    try statementFunCallParser <|>
+    statementAssignmentParser <?>
+    "statement"
 
 statementAssignmentParser :: Parser Statement
 statementAssignmentParser = do
   assignment <- assignmentParser <?> "assignment statement"
   newlineParser <|> eof <?> "newline or EOF after assignment statement"
   pure $ StatementAssignment assignment
+
+statementFunCallParser :: Parser Statement
+statementFunCallParser = do
+  funCall <- funCallParser
+  newlineParser <|> eof <?> "newline or EOF after function call statement"
+  pure $ StatementFunCall funCall
 
 statementForLoopParser :: Parser Statement
 statementForLoopParser = do
@@ -179,8 +194,19 @@ termParser :: Parser Expr
 termParser =
   between (tokenParser' TokOpenParen) (tokenParser' TokCloseParen) exprParser
   <|> integerParser
-  <|> (fmap ExprVar identParser)
+  <|> try (fmap ExprFunCall funCallParser)
+  <|> fmap ExprVar identParser
   <?> "term"
+
+funCallParser :: Parser FunCall
+funCallParser = do
+  funName <- identParser
+  (args :: [Expr]) <-
+    between
+      (tokenParser' TokOpenParen)
+      (tokenParser' TokCloseParen)
+      (sepBy exprParser (tokenParser' TokComma))
+  pure $ FunCall funName args
 
 exprTable :: [[Operator Parser Expr]]
 exprTable =

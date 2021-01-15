@@ -209,6 +209,7 @@ test =
             [__i|
               fun Insertion-Sort(a)
                 a = 10
+              b = 20
              |]
           expectedAST =
             AST
@@ -217,5 +218,46 @@ test =
                     [ StatementAssignment (Assignment (Identifier "a") (ExprInteger 10))
                     ]
                   )
+              , TopLevelStatement
+                  (StatementAssignment (Assignment (Identifier "b") (ExprInteger 20)))
+              ]
+      parserTest astParser input expectedAST
+    it "test15" $ do
+      let input =
+            [__i|
+              fun Insertion-Sort(a, x)
+                a = 10
+              b = 20
+              c = Insertion-Sort(b, 1 + 2)
+              print(5)
+              goto()
+             |]
+          expectedAST =
+            AST
+              [ TopLevelFunDef
+                  (FunDef
+                     (Identifier "Insertion-Sort")
+                     [Identifier "a", Identifier "x"]
+                     [StatementAssignment (Assignment (Identifier "a") (ExprInteger 10))])
+              , TopLevelStatement
+                  (StatementAssignment (Assignment (Identifier "b") (ExprInteger 20)))
+              , TopLevelStatement
+                  (StatementAssignment
+                     (Assignment
+                        (Identifier "c")
+                        (ExprFunCall
+                           (FunCall
+                              (Identifier "Insertion-Sort")
+                              [ ExprVar (Identifier "b")
+                              , ExprPlus (ExprInteger 1) (ExprInteger 2)
+                              ]
+                           )
+                        )
+                     )
+                  )
+              , TopLevelStatement
+                  (StatementFunCall (FunCall (Identifier "print") [ExprInteger 5]))
+              , TopLevelStatement
+                  (StatementFunCall (FunCall (Identifier "goto") []))
               ]
       parserTest astParser input expectedAST
