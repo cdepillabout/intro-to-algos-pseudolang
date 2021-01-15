@@ -6,7 +6,7 @@ import Pseudolang.Prelude hiding (many, some, try)
 import Control.Monad.Combinators.Expr (Operator(InfixL, Prefix), makeExprParser)
 import Control.Monad.Reader (local)
 import qualified Data.Set as Set
-import Text.Megaparsec (ErrorItem, ParsecT, Pos, SourcePos, between, choice, eof, getOffset, many, mkPos, notFollowedBy, some, token, try, unPos, (<?>))
+import Text.Megaparsec (ErrorItem, ParsecT, Pos, SourcePos, between, choice, eof, getOffset, many, mkPos, notFollowedBy, sepBy, some, token, try, unPos, (<?>))
 import Text.Megaparsec.Char (alphaNumChar, char, hspace1, letterChar, string)
 
 import Pseudolang.Lexer (Tok(..), Token(Token))
@@ -18,7 +18,7 @@ type Parser = ReaderT IndentAmount (ParsecT Void [Token] Identity)
 newtype AST = AST { unAST :: [TopLevel] }
   deriving stock (Eq, Ord, Show)
 
-data TopLevel = TopLevelStatement Statement | TopLevelFuncDef FuncDef
+data TopLevel = TopLevelStatement Statement | TopLevelFunDef FunDef
   deriving stock (Eq, Ord, Show)
 
 data Statement
@@ -34,7 +34,7 @@ data ElseIf = ElseIf
   }
   deriving stock (Eq, Ord, Show)
 
-data FuncDef = FuncDef Identifier [Identifier] [Statement]
+data FunDef = FunDef Identifier [Identifier] [Statement]
   deriving stock (Eq, Ord, Show)
 
 data Assignment = Assignment Identifier Expr
@@ -66,8 +66,20 @@ astParser :: Parser AST
 astParser = fmap AST $ many topLevelParser
 
 topLevelParser :: Parser TopLevel
-topLevelParser = do
+topLevelParser =
+  fmap TopLevelFunDef funDefParser <|>
   fmap TopLevelStatement statementParser
+
+funDefParser :: Parser FunDef
+funDefParser = do
+  tokenParser' TokFun
+  funcName <- identParser
+  tokenParser' TokOpenParen
+  funcArgs <- sepBy identParser (tokenParser' TokComma)
+  tokenParser' TokCloseParen
+  newlineParser
+  statements <- indented statementsParser <?> "indented statements in function def"
+  pure $ FunDef funcName funcArgs statements
 
 statementsParser :: Parser [Statement]
 statementsParser = do

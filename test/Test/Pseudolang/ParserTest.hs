@@ -204,3 +204,18 @@ test =
       let input = "  a = 4"
           expectedAST = StatementAssignment (Assignment (Identifier "a") (ExprInteger 4))
       parserTestWithIndent 2 statementParser input expectedAST
+    it "test15" $ do
+      let input =
+            [__i|
+              fun Insertion-Sort(a)
+                a = 10
+             |]
+          expectedAST =
+            AST
+              [ TopLevelFunDef
+                  (FunDef (Identifier "Insertion-Sort") [Identifier "a"]
+                    [ StatementAssignment (Assignment (Identifier "a") (ExprInteger 10))
+                    ]
+                  )
+              ]
+      parserTest astParser input expectedAST

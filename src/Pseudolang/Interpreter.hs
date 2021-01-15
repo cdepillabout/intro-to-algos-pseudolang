@@ -54,7 +54,7 @@ interpretAST (AST topLevels) = for_ topLevels interpretTopLevel
 
 interpretTopLevel :: TopLevel -> Interpret ()
 interpretTopLevel = \case
-  TopLevelFuncDef _ -> undefined
+  TopLevelFunDef _ -> undefined
   TopLevelStatement statement -> interpretStatement statement
 
 interpretStatement :: Statement -> Interpret ()
