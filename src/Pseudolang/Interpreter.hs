@@ -209,7 +209,9 @@ interpretExpr = \case
     int1 <- interpretExprToInt expr1
     int2 <- interpretExprToInt expr2
     pure $ ValBool $ int1 > int2
-  ExprFunCall funCall -> undefined
+  ExprFunCall funCall -> do
+    res <- interpretFunCall funCall
+    pure res
   ExprInteger int -> pure $ ValInt int
   ExprLessThan expr1 expr2 -> do
     int1 <- interpretExprToInt expr1

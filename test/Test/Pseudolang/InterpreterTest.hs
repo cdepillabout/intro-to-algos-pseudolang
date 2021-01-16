@@ -87,3 +87,20 @@ test =
               , (Identifier "j", ValInt 103)
               ]
       interpreterTest input expectedMapping
+    it "test8" $ do
+      let input =
+            [__i|
+              fun Insertion-Sort(a, x)
+                a = 10
+                return x + 1
+              x = 100
+              b = Insertion-Sort(1, x)
+              c = Insertion-Sort(3, b)
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "b", ValInt 101)
+              , (Identifier "c", ValInt 102)
+              , (Identifier "x", ValInt 100)
+              ]
+      interpreterTest input expectedMapping

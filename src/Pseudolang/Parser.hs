@@ -95,6 +95,7 @@ statementParser :: Parser Statement
 statementParser = do
   indentParser
   statementForLoopParser <|>
+    statementReturnParser <|>
     try statementFunCallParser <|>
     statementAssignmentParser <?>
     "statement"
@@ -110,6 +111,13 @@ statementFunCallParser = do
   funCall <- funCallParser
   newlineParser <|> eof <?> "newline or EOF after function call statement"
   pure $ StatementFunCall funCall
+
+statementReturnParser :: Parser Statement
+statementReturnParser = do
+  tokenParser' TokReturn
+  expr <- exprParser <?> "return statement expr"
+  newlineParser <|> eof <?> "newline or EOF after return statement"
+  pure $ StatementReturn expr
 
 statementForLoopParser :: Parser Statement
 statementForLoopParser = do
