@@ -104,3 +104,17 @@ test =
               , (Identifier "x", ValInt 100)
               ]
       interpreterTest input expectedMapping
+    it "test9" $ do
+      let input =
+            [__i|
+              fun ppp(a)
+                return a + 1
+              x = 100
+              b = ppp(3) + ppp(x)
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "b", ValInt 105)
+              , (Identifier "x", ValInt 100)
+              ]
+      interpreterTest input expectedMapping
