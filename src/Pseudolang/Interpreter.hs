@@ -2,8 +2,9 @@ module Pseudolang.Interpreter where
 
 import Pseudolang.Prelude
 
+import Control.Monad.Except (ExceptT, catchError, runExceptT, throwError)
 import Control.Monad.Fail (fail)
-import Control.Monad.State (execStateT, get, gets, modify)
+import Control.Monad.State (execStateT, get, gets, modify, put)
 import Data.Map.Strict (Map)
 import Text.Megaparsec (eof, errorBundlePretty, parse)
 import Text.Pretty.Simple (pShow)
@@ -11,11 +12,11 @@ import Text.Pretty.Simple (pShow)
 import Pseudolang.Parser
 import qualified Pseudolang.Lexer as Lexer
 
-type Interpret = StateT InterpState IO
+type Interpret = ExceptT Val (StateT InterpState IO)
 
 data InterpState = InterpState
   { interpStateVars :: Map Identifier Val
-  , interpStateFuncs :: Map Identifier FunDef
+  , interpStateFuns :: Map Identifier FunDef
   }
   deriving stock (Eq, Ord, Show)
 
@@ -27,9 +28,13 @@ addFunDef ident funDef =
   modify
     (\interpState ->
        interpState
-       { interpStateFuncs = insertMap ident funDef (interpStateFuncs interpState)
+       { interpStateFuns = insertMap ident funDef (interpStateFuns interpState)
        }
     )
+
+getFunDef :: MonadState InterpState m => Identifier -> m (Maybe FunDef)
+getFunDef ident =
+  gets (\interpState -> lookup ident (interpStateFuns interpState))
 
 getVar :: MonadState InterpState m => Identifier -> m (Maybe Val)
 getVar ident =
@@ -50,6 +55,7 @@ setVar ident val = do
 data Val
   = ValBool !Bool
   | ValInt !Integer
+  | ValUnit
   deriving stock (Eq, Ord, Show)
 
 parseAndInterpretToInterpStateWithInitial ::
@@ -78,8 +84,8 @@ interpretToInterpState :: AST -> IO InterpState
 interpretToInterpState ast = interpretToInterpStateWithInitial ast initialInterpState
 
 interpretToInterpStateWithInitial :: AST -> InterpState -> IO InterpState
-interpretToInterpStateWithInitial ast initInterpState =
-  execStateT (interpretAST ast) initInterpState
+interpretToInterpStateWithInitial ast initInterpState = do
+  execStateT (runExceptT $ interpretAST ast) initInterpState
 
 interpret :: AST -> IO ()
 interpret ast = void $ interpretToInterpState ast
@@ -92,6 +98,9 @@ interpretTopLevel = \case
   TopLevelFunDef funDef -> interpretFunDef funDef
   TopLevelStatement statement -> interpretStatement statement
 
+interpretStatements :: [Statement] -> Interpret ()
+interpretStatements statements = for_ statements interpretStatement
+
 interpretFunDef :: FunDef -> Interpret ()
 interpretFunDef funDef@(FunDef funName _ _) =
   addFunDef funName funDef
@@ -100,9 +109,41 @@ interpretStatement :: Statement -> Interpret ()
 interpretStatement = \case
   StatementAssignment assignment -> interpretAssignment assignment
   StatementForLoop forLoop -> interpretForLoop forLoop
-  StatementFunCall funCall -> undefined
+  StatementFunCall funCall -> void $ interpretFunCall funCall
   StatementIf expr statements elseIf -> undefined
-  StatementReturn expr -> undefined
+  StatementReturn expr -> do
+    val <- interpretExpr expr
+    throwError val
+
+interpretFunCall :: FunCall -> Interpret Val
+interpretFunCall (FunCall funName funCallArgs) = do
+  maybeFunName <- getFunDef funName
+  case maybeFunName of
+    Nothing ->
+      fail $
+        "Trying to call the function (" <> show funName <>
+        "), but it doesn't have an value in the known function mappings."
+    Just (FunDef _ funDefArgs funDefStatements)
+      | length funDefArgs /= length funCallArgs -> do
+          fail $
+            "Trying to call the function (" <> show funName <>
+            "), but it is defined with " <> show (length funDefArgs) <>
+            " args, but called with " <> show (length funCallArgs) <> " args"
+      | otherwise -> do
+          funCallVals <- traverse interpretExpr funCallArgs
+          let initialValMapping :: Map Identifier Val
+              initialValMapping =
+                foldMap
+                  (\(funDefArg, funCallVal) -> singletonMap funDefArg funCallVal)
+                  (zip funDefArgs funCallVals)
+          currInterpState <- get
+          put (currInterpState { interpStateVars = initialValMapping })
+          returnVal <-
+            catchError
+              (interpretStatements funDefStatements *> pure ValUnit)
+              pure
+          put currInterpState
+          pure returnVal
 
 interpretAssignment :: Assignment -> Interpret ()
 interpretAssignment (Assignment identifier expr) = do
