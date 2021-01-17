@@ -196,18 +196,8 @@ interpretAssignmentLHS (AssignmentLHSIdentifier ident) val = do
   setVar ident val
 interpretAssignmentLHS (AssignmentLHSArrayIndex (ArrayIndex arrayIdent expr)) val = do
   idx <- interpretExprToInt expr
-  maybeArr <- getVar arrayIdent
-  case maybeArr of
-    Nothing ->
-      fail $
-        "Trying to set array " <> show arrayIdent <> " at index " <> show idx <>
-        ", but array doesn't exist."
-    Just (ValVector v) -> do
-      liftIO $ MVec.write v (fromIntegral idx) val
-    Just val' -> do
-      fail $
-        "Trying to set array " <> show arrayIdent <> " at index " <> show idx <>
-        ", but " <> show arrayIdent <> " is not an array.  It is a " <> valType val'
+  v <- getIdentVec arrayIdent
+  liftIO $ MVec.write v (fromIntegral idx - 1) val
 
 interpretForLoop :: ForLoop -> Interpret ()
 interpretForLoop (ForLoop (Assignment AssignmentLHSArrayIndex{} _) _ _ _) = do
@@ -263,6 +253,14 @@ interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident)
 
 interpretExpr :: Expr -> Interpret Val
 interpretExpr = \case
+  ExprArrayIndex (ArrayIndex arrIdent idxExpr) -> do
+    idx <- interpretExprToInt idxExpr
+    vec <- getIdentVec arrIdent
+    liftIO $ MVec.read vec (fromIntegral idx - 1)
+  ExprArrayLit exprs -> do
+    vals <- traverse interpretExpr exprs
+    vec <- Vec.thaw (Vec.fromList vals)
+    pure $ ValVector vec
   ExprDivide expr1 expr2 -> do
     int1 <- interpretExprToInt expr1
     int2 <- interpretExprToInt expr2
@@ -296,10 +294,24 @@ interpretExpr = \case
     int2 <- interpretExprToInt expr2
     pure $ ValInt $ int1 * int2
   ExprVar identifier -> do
-    maybeVal <- getVar identifier
-    case maybeVal of
-      Nothing -> error $ "No value for identifier: " <> show identifier
-      Just val -> pure val
+    getIdentVal identifier
+
+getIdentVal :: Identifier -> Interpret Val
+getIdentVal ident = do
+  maybeVal <- getVar ident
+  case maybeVal of
+    Nothing -> error $ "No value for identifier: " <> show ident
+    Just val -> pure val
+
+getIdentVec :: Identifier -> Interpret (IOVector Val)
+getIdentVec ident = do
+  val <- getIdentVal ident
+  case val of
+    ValVector v -> pure v
+    val' -> do
+      fail $
+        "Trying to get identifier " <> show ident <>
+        " that should be an array, but it is a " <> valType val'
 
 interpretExprToInt :: Expr -> Interpret Integer
 interpretExprToInt expr = do

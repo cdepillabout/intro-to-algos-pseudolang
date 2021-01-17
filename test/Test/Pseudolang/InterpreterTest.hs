@@ -134,3 +134,16 @@ test =
               [ (Identifier "A", ValVector aVec)
               ]
       interpreterTest input expectedMapping
+    it "test11" $ do
+      aVec <- thawFromList [ValInt 100, ValInt 200, ValInt 301]
+      let input =
+            [__i|
+              A = [100, 200, 301]
+              x = A[3] + A[2]
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "A", ValVector aVec)
+              , (Identifier "x", ValInt 501)
+              ]
+      interpreterTest input expectedMapping
