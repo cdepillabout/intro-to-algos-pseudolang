@@ -42,7 +42,12 @@ data FunDef = FunDef Identifier [Identifier] [Statement]
 data FunCall = FunCall Identifier [Expr]
   deriving stock (Eq, Ord, Show)
 
-data Assignment = Assignment Identifier Expr
+data Assignment = Assignment AssignmentLHS Expr
+  deriving stock (Eq, Ord, Show)
+
+data AssignmentLHS
+  = AssignmentLHSIdentifier Identifier
+  | AssignmentLHSArrayIndex ArrayIndex
   deriving stock (Eq, Ord, Show)
 
 data ForLoop = ForLoop Assignment ForDirection Expr [Statement]
@@ -51,8 +56,13 @@ data ForLoop = ForLoop Assignment ForDirection Expr [Statement]
 data ForDirection = ForDirectionDownTo | ForDirectionTo
   deriving stock (Eq, Ord, Show)
 
+data ArrayIndex = ArrayIndex Identifier Expr
+  deriving stock (Eq, Ord, Show)
+
 data Expr
-  = ExprDivide Expr Expr
+  = ExprArrayIndex ArrayIndex -- ^ This is like @A[3]@.
+  | ExprArrayLit [Expr] -- ^ This is like @[1, 3, x]@.
+  | ExprDivide Expr Expr
   | ExprFunCall FunCall
   | ExprGreaterThan Expr Expr
   | ExprInteger Integer
@@ -188,21 +198,44 @@ integerParser = tokenParser f
     f (TokInteger i) = Just (ExprInteger i)
     f _ = Nothing
 
+assignmentLHSParser :: Parser AssignmentLHS
+assignmentLHSParser = do
+  try (fmap AssignmentLHSArrayIndex arrayIndexParser) <|>
+    (fmap AssignmentLHSIdentifier identParser)
+
 assignmentParser :: Parser Assignment
 assignmentParser = do
-  ident <- identParser
+  assignLHS <- assignmentLHSParser
   equalsParser
   expr <- exprParser
-  pure $ Assignment ident expr
+  pure $ Assignment assignLHS expr
 
 exprParser :: Parser Expr
 exprParser = makeExprParser termParser exprTable <?> "expression"
 
+arrayLiteralParser :: Parser Expr
+arrayLiteralParser = do
+  exprs <- between (tokenParser' TokOpenSquareBracket) (tokenParser' TokCloseSquareBracket)
+    (sepBy exprParser (tokenParser' TokComma))
+  pure $ ExprArrayLit exprs
+
+arrayIndexParser :: Parser ArrayIndex
+arrayIndexParser = do
+  ident <- identParser
+  indexExpr <-
+    between
+      (tokenParser' TokOpenSquareBracket)
+      (tokenParser' TokCloseSquareBracket)
+      exprParser
+  pure $ ArrayIndex ident indexExpr
+
 termParser :: Parser Expr
 termParser =
   between (tokenParser' TokOpenParen) (tokenParser' TokCloseParen) exprParser
+  <|> arrayLiteralParser
   <|> integerParser
   <|> try (fmap ExprFunCall funCallParser)
+  <|> try (fmap ExprArrayIndex arrayIndexParser)
   <|> fmap ExprVar identParser
   <?> "term"
 

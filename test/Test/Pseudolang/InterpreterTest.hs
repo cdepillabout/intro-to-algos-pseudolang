@@ -5,11 +5,16 @@ module Test.Pseudolang.InterpreterTest where
 import Pseudolang.Prelude
 
 import Data.String.Interpolate (__i)
+import qualified Data.Vector as Vec
+import Data.Vector.Mutable (IOVector)
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 import Text.Megaparsec (eof, errorBundlePretty, mkPos, parse)
 
 import Pseudolang.Interpreter
 import Pseudolang.Parser (Identifier(..))
+
+thawFromList :: MonadIO m => [Val] -> m (IOVector Val)
+thawFromList l = liftIO $ Vec.thaw $ Vec.fromList l
 
 interpreterTest :: Text -> (Map Identifier Val) -> IO ()
 interpreterTest input expectedVarMapping = do
@@ -116,5 +121,16 @@ test =
             mapFromList
               [ (Identifier "b", ValInt 105)
               , (Identifier "x", ValInt 100)
+              ]
+      interpreterTest input expectedMapping
+    it "test10" $ do
+      aVec <- thawFromList [ValInt 1, ValInt 2, ValInt 3]
+      let input =
+            [__i|
+              A = [1,2,3]
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "A", ValVector aVec)
               ]
       interpreterTest input expectedMapping

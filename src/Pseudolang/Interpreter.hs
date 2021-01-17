@@ -6,6 +6,10 @@ import Control.Monad.Except (ExceptT, catchError, runExceptT, throwError)
 import Control.Monad.Fail (fail)
 import Control.Monad.State (execStateT, get, gets, modify, put)
 import Data.Map.Strict (Map)
+import qualified Data.Vector as Vec
+import Data.Vector.Mutable (IOVector)
+import qualified Data.Vector.Mutable as MVec
+import System.IO.Unsafe (unsafePerformIO)
 import Text.Megaparsec (eof, errorBundlePretty, parse)
 import Text.Pretty.Simple (pShow)
 
@@ -18,7 +22,7 @@ data InterpState = InterpState
   { interpStateVars :: Map Identifier Val
   , interpStateFuns :: Map Identifier FunDef
   }
-  deriving stock (Eq, Ord, Show)
+  -- deriving stock (Eq, Ord, Show)
 
 initialInterpState :: InterpState
 initialInterpState = InterpState mempty mempty
@@ -56,7 +60,43 @@ data Val
   = ValBool !Bool
   | ValInt !Integer
   | ValUnit
-  deriving stock (Eq, Ord, Show)
+  | ValVector (IOVector Val)
+  -- deriving stock (Eq, Ord, Show)
+
+instance Show Val where
+  show (ValBool b) = show b
+  show (ValInt i) = show i
+  show ValUnit = show "unit"
+  show (ValVector v) = show g
+    where
+      g :: Vec.Vector Val
+      g = unsafePerformIO $ Vec.freeze v
+      {-# NOINLINE g #-}
+
+instance Eq Val where
+  ValBool b1 == ValBool b2 = b1 == b2
+  ValInt i1 == ValInt i2 = i1 == i2
+  ValUnit == ValUnit = True
+  ValVector v1 == ValVector v2 =
+    let v1' = g
+        v2' = h
+    in v1' == v2'
+    where
+      g :: Vec.Vector Val
+      g = unsafePerformIO $ Vec.freeze v1
+      {-# NOINLINE g #-}
+
+      h :: Vec.Vector Val
+      h = unsafePerformIO $ Vec.freeze v2
+      {-# NOINLINE h #-}
+
+valType :: Val -> String
+valType ValBool{} = "bool"
+valType ValInt{} = "int"
+valType ValUnit{} = "unit"
+valType ValVector{} = "array"
+
+-- instance Eq (IOVector Val) where
 
 parseAndInterpretToInterpStateWithInitial ::
      Text -> InterpState -> IO InterpState
@@ -146,12 +186,34 @@ interpretFunCall (FunCall funName funCallArgs) = do
           pure returnVal
 
 interpretAssignment :: Assignment -> Interpret ()
-interpretAssignment (Assignment identifier expr) = do
+interpretAssignment (Assignment assignmentLHS expr) = do
   val <- interpretExpr expr
-  setVar identifier val
+  interpretAssignmentLHS assignmentLHS val
+  -- setVar identifier val
+
+interpretAssignmentLHS :: AssignmentLHS -> Val -> Interpret ()
+interpretAssignmentLHS (AssignmentLHSIdentifier ident) val = do
+  setVar ident val
+interpretAssignmentLHS (AssignmentLHSArrayIndex (ArrayIndex arrayIdent expr)) val = do
+  idx <- interpretExprToInt expr
+  maybeArr <- getVar arrayIdent
+  case maybeArr of
+    Nothing ->
+      fail $
+        "Trying to set array " <> show arrayIdent <> " at index " <> show idx <>
+        ", but array doesn't exist."
+    Just (ValVector v) -> do
+      liftIO $ MVec.write v (fromIntegral idx) val
+    Just val' -> do
+      fail $
+        "Trying to set array " <> show arrayIdent <> " at index " <> show idx <>
+        ", but " <> show arrayIdent <> " is not an array.  It is a " <> valType val'
 
 interpretForLoop :: ForLoop -> Interpret ()
-interpretForLoop (ForLoop assignment@(Assignment identifier _) direction goalExpr bodyStatements) = do
+interpretForLoop (ForLoop (Assignment AssignmentLHSArrayIndex{} _) _ _ _) = do
+  fail $
+    "In for loop, loop variable is an indexed array, but this is not allowed."
+interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident) _) direction goalExpr bodyStatements) = do
   interpretAssignment assignment
   loopWhileNotGoal
   where
@@ -168,7 +230,7 @@ interpretForLoop (ForLoop assignment@(Assignment identifier _) direction goalExp
       -- If there are no more statements left to interpret in the loop body,
       -- then we either increment or decrement the loop identifier, and then loop again.
       i <- getLoopIdentVal
-      setVar identifier (ValInt (identForModifier i))
+      setVar ident (ValInt (identForModifier i))
       loopWhileNotGoal
     loop (thisStatement : remainingStatements) = do
       interpretStatement thisStatement
@@ -184,18 +246,18 @@ interpretForLoop (ForLoop assignment@(Assignment identifier _) direction goalExp
 
     getLoopIdentVal :: Interpret Integer
     getLoopIdentVal = do
-      maybeIdentVal <- getVar identifier
+      maybeIdentVal <- getVar ident
       case maybeIdentVal of
         Nothing -> do
           mapping <- getVarMappings
           fail $
-            "The identifier (" <> show identifier <>
+            "The identifier (" <> show ident <>
             ") doesn't have an value in the identifier mapping (" <>
             show mapping <>
             ") in a for loop, even though it definitely should"
         Just (ValBool b) -> do
           fail $
-            "The identifier (" <> show identifier <>
+            "The identifier (" <> show ident <>
             ") in a for loop is a boolean and not an integer."
         Just (ValInt i) -> pure i
 

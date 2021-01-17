@@ -95,7 +95,7 @@ test =
       let input = "x = 1 + 2"
           expectedAST =
             Assignment
-              (Identifier "x")
+              (AssignmentLHSIdentifier (Identifier "x"))
               (ExprPlus
                 (ExprInteger 1)
                 (ExprInteger 2)
@@ -114,7 +114,7 @@ test =
           expectedAST =
             StatementAssignment
               (Assignment
-                (Identifier "x")
+                (AssignmentLHSIdentifier (Identifier "x"))
                 (ExprPlus (ExprInteger 1) (ExprInteger 2))
               )
       parserTest statementParser input expectedAST
@@ -123,7 +123,7 @@ test =
           expectedAST =
             [ StatementAssignment
                 (Assignment
-                  (Identifier "x")
+                  (AssignmentLHSIdentifier (Identifier "x"))
                   (ExprPlus (ExprInteger 1) (ExprInteger 2))
                 )
             ]
@@ -135,7 +135,7 @@ test =
               [ TopLevelStatement
                   (StatementAssignment
                     (Assignment
-                      (Identifier "x")
+                      (AssignmentLHSIdentifier (Identifier "x"))
                       (ExprPlus (ExprInteger 1) (ExprInteger 2))
                     )
                   )
@@ -151,17 +151,17 @@ test =
             AST
               [ TopLevelStatement
                   (StatementForLoop
-                    (ForLoop
-                      (Assignment
-                        (Identifier "x")
-                        (ExprInteger 3))
-                      ForDirectionTo
-                      (ExprInteger 7)
-                      [ StatementAssignment
-                          (Assignment (Identifier "a") (ExprInteger 4))
-                      ]
-                    )
-                  )
+                     (ForLoop
+                        (Assignment
+                           (AssignmentLHSIdentifier (Identifier "x"))
+                           (ExprInteger 3))
+                        ForDirectionTo
+                        (ExprInteger 7)
+                        [ StatementAssignment
+                            (Assignment
+                               (AssignmentLHSIdentifier (Identifier "a"))
+                               (ExprInteger 4))
+                        ]))
               ]
       parserTest astParser input expectedAST
     it "test10" $ do
@@ -173,9 +173,15 @@ test =
           expectedAST =
             AST
               [ TopLevelStatement
-                  (StatementAssignment (Assignment (Identifier "a") (ExprInteger 4)))
+                  (StatementAssignment
+                     (Assignment
+                        (AssignmentLHSIdentifier (Identifier "a"))
+                        (ExprInteger 4)))
               , TopLevelStatement
-                  (StatementAssignment (Assignment (Identifier "b") (ExprInteger 3)))
+                  (StatementAssignment
+                     (Assignment
+                        (AssignmentLHSIdentifier (Identifier "b"))
+                        (ExprInteger 3)))
               ]
       parserTest astParser input expectedAST
     it "test11" $ do
@@ -185,24 +191,34 @@ test =
                 b = 3
              |]
           expectedAST =
-            ForLoop (Assignment (Identifier "x") (ExprInteger 3)) ForDirectionTo (ExprInteger 7)
-              [ StatementAssignment (Assignment (Identifier "b") (ExprInteger 3))
+            ForLoop
+              (Assignment (AssignmentLHSIdentifier (Identifier "x")) (ExprInteger 3))
+              ForDirectionTo
+              (ExprInteger 7)
+              [ StatementAssignment
+                  (Assignment (AssignmentLHSIdentifier (Identifier "b")) (ExprInteger 3))
               ]
       parserTest forParser input expectedAST
     it "test12" $ do
       let input = "  a = 4\n  b = 3"
           expectedAST =
-            [ StatementAssignment (Assignment (Identifier "a") (ExprInteger 4))
-            , StatementAssignment (Assignment (Identifier "b") (ExprInteger 3))
+            [ StatementAssignment
+                (Assignment (AssignmentLHSIdentifier (Identifier "a")) (ExprInteger 4))
+            , StatementAssignment
+                (Assignment (AssignmentLHSIdentifier (Identifier "b")) (ExprInteger 3))
             ]
       parserTestWithIndent 2 statementsParser input expectedAST
     it "test13" $ do
       let input = "a = 4"
-          expectedAST = StatementAssignment (Assignment (Identifier "a") (ExprInteger 4))
+          expectedAST =
+            StatementAssignment
+              (Assignment (AssignmentLHSIdentifier (Identifier "a")) (ExprInteger 4))
       parserTestWithIndent 2 statementAssignmentParser input expectedAST
     it "test14" $ do
       let input = "  a = 4"
-          expectedAST = StatementAssignment (Assignment (Identifier "a") (ExprInteger 4))
+          expectedAST =
+            StatementAssignment
+              (Assignment (AssignmentLHSIdentifier (Identifier "a")) (ExprInteger 4))
       parserTestWithIndent 2 statementParser input expectedAST
     it "test15" $ do
       let input =
@@ -214,15 +230,22 @@ test =
           expectedAST =
             AST
               [ TopLevelFunDef
-                  (FunDef (Identifier "Insertion-Sort") [Identifier "a"]
-                    [ StatementAssignment (Assignment (Identifier "a") (ExprInteger 10))
-                    ]
-                  )
+                  (FunDef
+                     (Identifier "Insertion-Sort")
+                     [Identifier "a"]
+                     [ StatementAssignment
+                         (Assignment
+                            (AssignmentLHSIdentifier (Identifier "a"))
+                            (ExprInteger 10))
+                     ])
               , TopLevelStatement
-                  (StatementAssignment (Assignment (Identifier "b") (ExprInteger 20)))
+                  (StatementAssignment
+                     (Assignment
+                        (AssignmentLHSIdentifier (Identifier "b"))
+                        (ExprInteger 20)))
               ]
       parserTest astParser input expectedAST
-    it "test15" $ do
+    it "test16" $ do
       let input =
             [__i|
               fun Insertion-Sort(a, x)
@@ -238,26 +261,34 @@ test =
                   (FunDef
                      (Identifier "Insertion-Sort")
                      [Identifier "a", Identifier "x"]
-                     [StatementAssignment (Assignment (Identifier "a") (ExprInteger 10))])
-              , TopLevelStatement
-                  (StatementAssignment (Assignment (Identifier "b") (ExprInteger 20)))
+                     [ StatementAssignment
+                         (Assignment
+                            (AssignmentLHSIdentifier (Identifier "a"))
+                            (ExprInteger 10))
+                     ])
               , TopLevelStatement
                   (StatementAssignment
                      (Assignment
-                        (Identifier "c")
+                        (AssignmentLHSIdentifier (Identifier "b"))
+                        (ExprInteger 20)))
+              , TopLevelStatement
+                  (StatementAssignment
+                     (Assignment
+                        (AssignmentLHSIdentifier (Identifier "c"))
                         (ExprFunCall
                            (FunCall
                               (Identifier "Insertion-Sort")
                               [ ExprVar (Identifier "b")
                               , ExprPlus (ExprInteger 1) (ExprInteger 2)
-                              ]
-                           )
-                        )
-                     )
-                  )
+                              ]))))
               , TopLevelStatement
                   (StatementFunCall (FunCall (Identifier "print") [ExprInteger 5]))
-              , TopLevelStatement
-                  (StatementFunCall (FunCall (Identifier "goto") []))
+              , TopLevelStatement (StatementFunCall (FunCall (Identifier "goto") []))
               ]
       parserTest astParser input expectedAST
+    it "test17" $ do
+      let input = "[ 1, 3+4, 5 ]"
+          expectedAST =
+            ExprArrayLit
+              [ExprInteger 1, ExprPlus (ExprInteger 3) (ExprInteger 4), ExprInteger 5]
+      parserTestWithIndent 2 exprParser input expectedAST
