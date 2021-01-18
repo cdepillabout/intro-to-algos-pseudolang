@@ -289,12 +289,27 @@ interpretExpr = \case
     int1 <- interpretExprToInt expr1
     int2 <- interpretExprToInt expr2
     pure $ ValInt $ int1 + int2
+  ExprProperty prop -> interpretProperty prop
   ExprTimes expr1 expr2 -> do
     int1 <- interpretExprToInt expr1
     int2 <- interpretExprToInt expr2
     pure $ ValInt $ int1 * int2
   ExprVar identifier -> do
     getIdentVal identifier
+
+-- | Interpret a property access like @A.length@.
+--
+-- There are only a few available properties.
+interpretProperty :: Property -> Interpret Val
+interpretProperty (Property ident propIdent) =
+  case propIdent of
+    (Identifier "length") -> do
+      -- .length is only available on vectors.
+      vec <- getIdentVec ident
+      let vecLength = MVec.length vec
+      pure $ ValInt (fromIntegral vecLength)
+    (Identifier x) ->
+      fail $ "Trying to access property " <> unpack x <> ", but unknown property."
 
 getIdentVal :: Identifier -> Interpret Val
 getIdentVal ident = do

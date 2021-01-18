@@ -42,6 +42,9 @@ data FunDef = FunDef Identifier [Identifier] [Statement]
 data FunCall = FunCall Identifier [Expr]
   deriving stock (Eq, Ord, Show)
 
+data Property = Property Identifier Identifier
+  deriving stock (Eq, Ord, Show)
+
 data Assignment = Assignment AssignmentLHS Expr
   deriving stock (Eq, Ord, Show)
 
@@ -63,7 +66,7 @@ data Expr
   = ExprArrayIndex ArrayIndex -- ^ This is like @A[3]@.
   | ExprArrayLit [Expr] -- ^ This is like @[1, 3, x]@.
   | ExprDivide Expr Expr
-  | ExprFunCall FunCall
+  | ExprFunCall FunCall -- ^ This is like @hello(1, 3)@.
   | ExprGreaterThan Expr Expr
   | ExprInteger Integer
   | ExprLessThan Expr Expr
@@ -71,6 +74,7 @@ data Expr
   | ExprNegate Expr
   | ExprParens Expr
   | ExprPlus Expr Expr
+  | ExprProperty Property -- ^ This is like @A.length@.
   | ExprTimes Expr Expr
   | ExprVar Identifier
   deriving stock (Eq, Ord, Show)
@@ -229,16 +233,6 @@ arrayIndexParser = do
       exprParser
   pure $ ArrayIndex ident indexExpr
 
-termParser :: Parser Expr
-termParser =
-  between (tokenParser' TokOpenParen) (tokenParser' TokCloseParen) exprParser
-  <|> arrayLiteralParser
-  <|> integerParser
-  <|> try (fmap ExprFunCall funCallParser)
-  <|> try (fmap ExprArrayIndex arrayIndexParser)
-  <|> fmap ExprVar identParser
-  <?> "term"
-
 funCallParser :: Parser FunCall
 funCallParser = do
   funName <- identParser
@@ -248,6 +242,24 @@ funCallParser = do
       (tokenParser' TokCloseParen)
       (sepBy exprParser (tokenParser' TokComma))
   pure $ FunCall funName args
+
+propertyParser :: Parser Property
+propertyParser = do
+  ident <- identParser
+  tokenParser' TokPeriod
+  propertyIdent <- identParser
+  pure $ Property ident propertyIdent
+
+termParser :: Parser Expr
+termParser =
+  between (tokenParser' TokOpenParen) (tokenParser' TokCloseParen) exprParser
+  <|> arrayLiteralParser
+  <|> integerParser
+  <|> try (fmap ExprFunCall funCallParser)
+  <|> try (fmap ExprArrayIndex arrayIndexParser)
+  <|> try (fmap ExprProperty propertyParser)
+  <|> fmap ExprVar identParser
+  <?> "term"
 
 exprTable :: [[Operator Parser Expr]]
 exprTable =

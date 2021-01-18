@@ -16,7 +16,8 @@ data Token = Token
   } deriving (Eq, Ord, Show)
 
 data Tok
-  = TokCloseCurlyBrace
+  = TokAnd
+  | TokCloseCurlyBrace
   | TokCloseParen
   | TokCloseSquareBracket
   | TokComma
@@ -35,10 +36,13 @@ data Tok
   | TokOpenCurlyBrace
   | TokOpenParen
   | TokOpenSquareBracket
+  | TokOr
+  | TokPeriod
   | TokPlus
   | TokReturn
   | TokTimes
   | TokTo
+  | TokWhile
   deriving (Eq, Ord, Show)
 
 tokenizer :: Parser [Token]
@@ -73,11 +77,14 @@ lexemeParser p = tokenParser p <* spaceParser
 
 reservedAlphaWords :: [(Text, Tok)]
 reservedAlphaWords =
-  [ ("fun", TokFun)
+  [ ("and", TokAnd)
   , ("downto", TokDownTo)
   , ("for", TokFor)
+  , ("fun", TokFun)
+  , ("or", TokOr)
   , ("return", TokReturn)
   , ("to", TokTo)
+  , ("while", TokWhile)
   ]
 
 reservedAlphaWordsParser :: Parser Token
@@ -95,6 +102,7 @@ reservedSyms =
   , ("+", TokPlus)
   , (",", TokComma)
   , ("-", TokMinus)
+  , (".", TokPeriod)
   , ("/", TokDivide)
   , ("<", TokLessThan)
   , ("=", TokEquals)
