@@ -163,3 +163,35 @@ test =
               , (Identifier "b", ValInt 4)
               ]
       interpreterTest input expectedMapping
+    it "test13" $ do
+      let input =
+            [__i|
+              a = 1 > 3
+              b = 2 < 10
+              w = a and b
+              x = b and a
+              y = a or b
+              z = b or a
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "a", ValBool False)
+              , (Identifier "b", ValBool True)
+              , (Identifier "w", ValBool False)
+              , (Identifier "x", ValBool False)
+              , (Identifier "y", ValBool True)
+              , (Identifier "z", ValBool True)
+              ]
+      interpreterTest input expectedMapping
+    it "test14" $ do
+      let input =
+            [__i|
+              a = 1
+              while a < 5
+                a = a + 1
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "a", ValInt 5)
+              ]
+      interpreterTest input expectedMapping

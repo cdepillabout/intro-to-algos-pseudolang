@@ -28,6 +28,7 @@ data Statement
   | StatementForLoop ForLoop
   | StatementIf Expr (NonEmpty Statement) (Maybe ElseIf)
   | StatementReturn Expr
+  | StatementWhileLoop WhileLoop
   deriving stock (Eq, Ord, Show)
 
 data ElseIf = ElseIf
@@ -59,11 +60,15 @@ data ForLoop = ForLoop Assignment ForDirection Expr [Statement]
 data ForDirection = ForDirectionDownTo | ForDirectionTo
   deriving stock (Eq, Ord, Show)
 
+data WhileLoop = WhileLoop Expr [Statement]
+  deriving stock (Eq, Ord, Show)
+
 data ArrayIndex = ArrayIndex Identifier Expr
   deriving stock (Eq, Ord, Show)
 
 data Expr
-  = ExprArrayIndex ArrayIndex -- ^ This is like @A[3]@.
+  = ExprAnd Expr Expr -- ^ This is like @x and y@.
+  | ExprArrayIndex ArrayIndex -- ^ This is like @A[3]@.
   | ExprArrayLit [Expr] -- ^ This is like @[1, 3, x]@.
   | ExprDivide Expr Expr
   | ExprFunCall FunCall -- ^ This is like @hello(1, 3)@.
@@ -72,6 +77,7 @@ data Expr
   | ExprLessThan Expr Expr
   | ExprMinus Expr Expr
   | ExprNegate Expr
+  | ExprOr Expr Expr -- ^ This is like @x or y@.
   | ExprParens Expr
   | ExprPlus Expr Expr
   | ExprProperty Property -- ^ This is like @A.length@.
@@ -109,6 +115,7 @@ statementParser :: Parser Statement
 statementParser = do
   indentParser
   statementForLoopParser <|>
+    statementWhileLoopParser <|>
     statementReturnParser <|>
     try statementFunCallParser <|>
     statementAssignmentParser <?>
@@ -138,6 +145,11 @@ statementForLoopParser = do
   forLoop <- forParser
   pure $ StatementForLoop forLoop
 
+statementWhileLoopParser :: Parser Statement
+statementWhileLoopParser = do
+  whileLoop <- whileParser
+  pure $ StatementWhileLoop whileLoop
+
 getCurrIndent :: Parser IndentAmount
 getCurrIndent = ask
 
@@ -163,6 +175,14 @@ forParser = do
   newlineParser <?> "newline after for loop line"
   statements <- indented statementsParser <?> "indented statements in for loop"
   pure $ ForLoop assignment forDirection goal statements
+
+whileParser :: Parser WhileLoop
+whileParser = do
+  tokenParser' TokWhile
+  condition <- exprParser <?> "while loop condition"
+  newlineParser <?> "newline after while loop line"
+  statements <- indented statementsParser <?> "indented statements in while loop"
+  pure $ WhileLoop condition statements
 
 forDirectionParser :: Parser ForDirection
 forDirectionParser =
@@ -273,6 +293,9 @@ exprTable =
     ]
   , [ binary (tokenParser' TokLessThan) ExprLessThan
     , binary (tokenParser' TokGreaterThan) ExprGreaterThan
+    ]
+  , [ binary (tokenParser' TokAnd) ExprAnd
+    , binary (tokenParser' TokOr) ExprOr
     ]
   ]
   where

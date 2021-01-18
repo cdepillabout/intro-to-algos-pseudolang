@@ -154,6 +154,7 @@ interpretStatement = \case
   StatementReturn expr -> do
     val <- interpretExpr expr
     throwError val
+  StatementWhileLoop whileLoop -> interpretWhileLoop whileLoop
 
 interpretFunCall :: FunCall -> Interpret Val
 interpretFunCall (FunCall funName funCallArgs) = do
@@ -251,8 +252,21 @@ interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident)
             ") in a for loop is a boolean and not an integer."
         Just (ValInt i) -> pure i
 
+interpretWhileLoop :: WhileLoop -> Interpret ()
+interpretWhileLoop whileLoop@(WhileLoop conditionExpr bodyStatements) = do
+  conditionVal <- interpretExprToBool conditionExpr
+  if conditionVal
+    then do
+      interpretStatements bodyStatements
+      interpretWhileLoop whileLoop
+    else pure ()
+
 interpretExpr :: Expr -> Interpret Val
 interpretExpr = \case
+  ExprAnd expr1 expr2 -> do
+    bool1 <- interpretExprToBool expr1
+    bool2 <- interpretExprToBool expr2
+    pure $ ValBool $ bool1 && bool2
   ExprArrayIndex (ArrayIndex arrIdent idxExpr) -> do
     idx <- interpretExprToInt idxExpr
     vec <- getIdentVec arrIdent
@@ -284,6 +298,10 @@ interpretExpr = \case
   ExprNegate expr -> do
     int <- interpretExprToInt expr
     pure $ ValInt $ negate int
+  ExprOr expr1 expr2 -> do
+    bool1 <- interpretExprToBool expr1
+    bool2 <- interpretExprToBool expr2
+    pure $ ValBool $ bool1 || bool2
   ExprParens expr -> interpretExpr expr
   ExprPlus expr1 expr2 -> do
     int1 <- interpretExprToInt expr1

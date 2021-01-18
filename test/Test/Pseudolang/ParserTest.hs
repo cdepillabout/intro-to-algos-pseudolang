@@ -292,3 +292,16 @@ test =
             ExprArrayLit
               [ExprInteger 1, ExprPlus (ExprInteger 3) (ExprInteger 4), ExprInteger 5]
       parserTestWithIndent 2 exprParser input expectedAST
+    it "test18" $ do
+      let input =
+            [__i|
+              while x < 10
+                b = 3
+             |]
+          expectedAST =
+            WhileLoop
+              (ExprLessThan (ExprVar (Identifier "x")) (ExprInteger 10))
+              [ StatementAssignment
+                  (Assignment (AssignmentLHSIdentifier (Identifier "b")) (ExprInteger 3))
+              ]
+      parserTest whileParser input expectedAST
