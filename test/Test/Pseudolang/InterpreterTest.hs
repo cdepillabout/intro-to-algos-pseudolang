@@ -275,3 +275,13 @@ test =
     --           , (Identifier "key", ValInt 3)
     --           ]
     --   interpreterTest input expectedMapping
+    it "test19" $ do
+      let input =
+            [__i|
+              A = "hello oooo"
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "A", ValString "hello oooo")
+              ]
+      interpreterTest input expectedMapping

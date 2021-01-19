@@ -59,6 +59,7 @@ setVar ident val = do
 data Val
   = ValBool !Bool
   | ValInt !Integer
+  | ValString !Text
   | ValUnit
   | ValVector (IOVector Val)
   -- deriving stock (Eq, Ord, Show)
@@ -66,6 +67,7 @@ data Val
 instance Show Val where
   show (ValBool b) = show b
   show (ValInt i) = show i
+  show (ValString i) = unpack i
   show ValUnit = show "unit"
   show (ValVector v) = show g
     where
@@ -76,6 +78,7 @@ instance Show Val where
 instance Eq Val where
   ValBool b1 == ValBool b2 = b1 == b2
   ValInt i1 == ValInt i2 = i1 == i2
+  ValString s1 == ValString s2 = s1 == s2
   ValUnit == ValUnit = True
   ValVector v1 == ValVector v2 =
     let v1' = g
@@ -89,14 +92,14 @@ instance Eq Val where
       h :: Vec.Vector Val
       h = unsafePerformIO $ Vec.freeze v2
       {-# NOINLINE h #-}
+  _ == _ = False
 
 valType :: Val -> String
 valType ValBool{} = "bool"
 valType ValInt{} = "int"
+valType ValString{} = "string"
 valType ValUnit{} = "unit"
 valType ValVector{} = "array"
-
--- instance Eq (IOVector Val) where
 
 parseAndInterpretToInterpStateWithInitial ::
      Text -> InterpState -> IO InterpState
@@ -156,14 +159,30 @@ interpretStatement = \case
     throwError val
   StatementWhileLoop whileLoop -> interpretWhileLoop whileLoop
 
+interpretBuiltinFunCall :: Identifier -> [Expr] -> Interpret (Maybe Val)
+interpretBuiltinFunCall (Identifier builtinFunName) funCallArgs = do
+  funCallVals <- traverse interpretExpr funCallArgs
+  case builtinFunName of
+    "printf" ->
+      case funCallVals of
+        [] ->
+          fail $
+            "Trying to call the built-in function printf, but need at least one arg"
+        (ValString formatStr : vals) -> undefined
+    other -> pure Nothing
+
 interpretFunCall :: FunCall -> Interpret Val
 interpretFunCall (FunCall funName funCallArgs) = do
   maybeFunName <- getFunDef funName
   case maybeFunName of
-    Nothing ->
-      fail $
-        "Trying to call the function (" <> show funName <>
-        "), but it doesn't have an value in the known function mappings."
+    Nothing -> do
+      maybeVal <- interpretBuiltinFunCall funName funCallArgs
+      case maybeVal of
+        Nothing ->
+          fail $
+            "Trying to call the function (" <> show funName <>
+            "), but it doesn't have an value in the known function mappings."
+        Just val -> pure val
     Just (FunDef _ funDefArgs funDefStatements)
       | length funDefArgs /= length funCallArgs -> do
           fail $
@@ -308,6 +327,7 @@ interpretExpr = \case
     int2 <- interpretExprToInt expr2
     pure $ ValInt $ int1 + int2
   ExprProperty prop -> interpretProperty prop
+  ExprString str -> pure $ ValString str
   ExprTimes expr1 expr2 -> do
     int1 <- interpretExprToInt expr1
     int2 <- interpretExprToInt expr2

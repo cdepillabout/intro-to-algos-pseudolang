@@ -305,3 +305,9 @@ test =
                   (Assignment (AssignmentLHSIdentifier (Identifier "b")) (ExprInteger 3))
               ]
       parserTest whileParser input expectedAST
+    it "test19" $ do
+      let input = "[ 1, \"x y\", 5 ]"
+          expectedAST =
+            ExprArrayLit
+              [ExprInteger 1, ExprString "x y", ExprInteger 5]
+      parserTestWithIndent 2 exprParser input expectedAST

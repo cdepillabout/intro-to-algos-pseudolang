@@ -61,3 +61,9 @@ test =
         , Token {token = TokPlus, startPos = 2, endPos = 3}
         , Token {token = TokInteger 2, startPos = 4, endPos = 5}
         ]
+    it "test5" $ do
+      parserTest tokenizer "1 + \"hello dog\""
+        [ Token {token = TokInteger 1, startPos = 0, endPos = 1}
+        , Token {token = TokPlus, startPos = 2, endPos = 3}
+        , Token {token = TokString "hello dog", startPos = 4, endPos = 15}
+        ]

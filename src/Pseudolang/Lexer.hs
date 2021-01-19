@@ -3,7 +3,7 @@ module Pseudolang.Lexer where
 
 import Pseudolang.Prelude hiding (many, some, try)
 
-import Text.Megaparsec (ParsecT, Pos, SourcePos, choice, eof, getOffset, many, mkPos, notFollowedBy, some, try)
+import Text.Megaparsec (ParsecT, Pos, SourcePos, choice, eof, getOffset, many, manyTill, mkPos, notFollowedBy, some, try)
 import Text.Megaparsec.Char (alphaNumChar, char, hspace1, letterChar, string)
 import qualified Text.Megaparsec.Char.Lexer as Megaparsec.Lexer
 
@@ -40,6 +40,7 @@ data Tok
   | TokPeriod
   | TokPlus
   | TokReturn
+  | TokString Text
   | TokTimes
   | TokTo
   | TokWhile
@@ -57,6 +58,7 @@ lexer =
     [ reservedSymsParser
     , try reservedAlphaWordsParser
     , identifierParser
+    , stringLiteralParser
     , newlineParser
     , indentParser
     , integerParser
@@ -74,6 +76,13 @@ tokenParser p = do
 
 lexemeParser :: Parser Tok -> Parser Token
 lexemeParser p = tokenParser p <* spaceParser
+
+stringLiteralParser :: Parser Token
+stringLiteralParser = do
+  lexemeParser do
+    void $ char '"'
+    str <- manyTill Megaparsec.Lexer.charLiteral (char '"')
+    pure $ TokString (pack str)
 
 reservedAlphaWords :: [(Text, Tok)]
 reservedAlphaWords =

@@ -81,6 +81,7 @@ data Expr
   | ExprParens Expr
   | ExprPlus Expr Expr
   | ExprProperty Property -- ^ This is like @A.length@.
+  | ExprString Text -- ^ This is like @"hello bye"@.
   | ExprTimes Expr Expr
   | ExprVar Identifier
   deriving stock (Eq, Ord, Show)
@@ -242,6 +243,13 @@ integerParser = tokenParser f
     f (TokInteger i) = Just (ExprInteger i)
     f _ = Nothing
 
+stringLiteralParser :: Parser Expr
+stringLiteralParser = tokenParser f
+  where
+    f :: Tok -> Maybe Expr
+    f (TokString str) = Just (ExprString str)
+    f _ = Nothing
+
 assignmentLHSParser :: Parser AssignmentLHS
 assignmentLHSParser = do
   try (fmap AssignmentLHSArrayIndex arrayIndexParser) <|>
@@ -295,6 +303,7 @@ termParser =
   between (tokenParser' TokOpenParen) (tokenParser' TokCloseParen) exprParser
   <|> arrayLiteralParser
   <|> integerParser
+  <|> stringLiteralParser
   <|> try (fmap ExprFunCall funCallParser)
   <|> try (fmap ExprArrayIndex arrayIndexParser)
   <|> try (fmap ExprProperty propertyParser)
