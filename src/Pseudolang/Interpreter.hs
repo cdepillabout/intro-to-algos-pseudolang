@@ -231,7 +231,7 @@ interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident)
     loopWhileNotGoal = do
       i <- getLoopIdentVal
       goal <- interpretExprToInt goalExpr
-      if i == goal
+      if i > goal
         then pure ()
         else loop bodyStatements
 
