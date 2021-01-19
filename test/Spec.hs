@@ -11,6 +11,6 @@ import qualified Test.Pseudolang.ParserTest as ParserTest
 
 main :: IO ()
 main = hspec $ do
-  InterpreterTest.test
   LexerTest.test
   ParserTest.test
+  InterpreterTest.test

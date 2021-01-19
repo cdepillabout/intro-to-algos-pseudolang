@@ -159,16 +159,19 @@ interpretStatement = \case
     throwError val
   StatementWhileLoop whileLoop -> interpretWhileLoop whileLoop
 
+interpretBuiltinPrint :: [Val] -> Interpret Val
+interpretBuiltinPrint [] = do
+  putStrLn ""
+  pure ValUnit
+interpretBuiltinPrint (v:vals) = do
+  putStr $ tshow v <> " "
+  interpretBuiltinPrint vals
+
 interpretBuiltinFunCall :: Identifier -> [Expr] -> Interpret (Maybe Val)
 interpretBuiltinFunCall (Identifier builtinFunName) funCallArgs = do
   funCallVals <- traverse interpretExpr funCallArgs
   case builtinFunName of
-    "printf" ->
-      case funCallVals of
-        [] ->
-          fail $
-            "Trying to call the built-in function printf, but need at least one arg"
-        (ValString formatStr : vals) -> undefined
+    "print" -> fmap Just $ interpretBuiltinPrint funCallVals
     other -> pure Nothing
 
 interpretFunCall :: FunCall -> Interpret Val
@@ -283,9 +286,13 @@ interpretWhileLoop whileLoop@(WhileLoop conditionExpr bodyStatements) = do
 interpretExpr :: Expr -> Interpret Val
 interpretExpr = \case
   ExprAnd expr1 expr2 -> do
+    -- We need to evaluate the second expression lazily.
     bool1 <- interpretExprToBool expr1
-    bool2 <- interpretExprToBool expr2
-    pure $ ValBool $ bool1 && bool2
+    if bool1 == False
+      then pure $ ValBool False
+      else do
+        bool2 <- interpretExprToBool expr2
+        pure $ ValBool bool2
   ExprArrayIndex (ArrayIndex arrIdent idxExpr) -> do
     idx <- interpretExprToInt idxExpr
     vec <- getIdentVec arrIdent
@@ -319,8 +326,12 @@ interpretExpr = \case
     pure $ ValInt $ negate int
   ExprOr expr1 expr2 -> do
     bool1 <- interpretExprToBool expr1
-    bool2 <- interpretExprToBool expr2
-    pure $ ValBool $ bool1 || bool2
+    -- We need to evaluate the second expression lazily.
+    if bool1
+      then pure $ ValBool True
+      else do
+        bool2 <- interpretExprToBool expr2
+        pure $ ValBool bool2
   ExprParens expr -> interpretExpr expr
   ExprPlus expr1 expr2 -> do
     int1 <- interpretExprToInt expr1

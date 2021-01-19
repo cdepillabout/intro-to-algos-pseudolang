@@ -213,29 +213,27 @@ test =
               , (Identifier "b", ValInt 300)
               ]
       interpreterTest input expectedMapping
-    -- it "test16" $ do
-    --   aVec <- thawFromList [ValInt 5, ValInt 2, ValInt 4, ValInt 6, ValInt 1, ValInt 3]
-    --   bVec <- thawFromList [ValInt 1, ValInt 2, ValInt 3, ValInt 4, ValInt 5, ValInt 6]
-    --   let input =
-    --         [__i|
-    --           fun Insertion-Sort(A)
-    --             for j = 2 to A.length
-    --               key = A[j]
-    --               i = j - 1
-    --               while i > 0 and A[i] > key
-    --                 A[i + 1] = A[i]
-    --                 i = i - 1
-    --               A[i + 1] = key
+    it "test16" $ do
+      aVec <- thawFromList [ValInt 1, ValInt 2, ValInt 3, ValInt 4, ValInt 5, ValInt 6]
+      let input =
+            [__i|
+              fun Insertion-Sort(A)
+                for j = 2 to A.length
+                  key = A[j]
+                  i = j - 1
+                  while i > 0 and A[i] > key
+                    A[i + 1] = A[i]
+                    i = i - 1
+                  A[i + 1] = key
 
-    --           A = [5, 2, 4, 6, 1, 3]
-    --           B = Insertion-Sort(A)
-    --          |]
-    --       expectedMapping =
-    --         mapFromList
-    --           [ (Identifier "A", ValVector aVec)
-    --           , (Identifier "B", ValVector bVec)
-    --           ]
-    --   interpreterTest input expectedMapping
+              A = [5, 2, 4, 6, 1, 3]
+              Insertion-Sort(A)
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "A", ValVector aVec)
+              ]
+      interpreterTest input expectedMapping
     it "test17" $ do
       aVec <- thawFromList [ValInt 5, ValInt 2, ValInt 4, ValInt 6, ValInt 1, ValInt 3]
       let input =
@@ -253,28 +251,28 @@ test =
               , (Identifier "key", ValInt 3)
               ]
       interpreterTest input expectedMapping
-    -- it "test18" $ do
-    --   aVec <- thawFromList [ValInt 5, ValInt 2, ValInt 4, ValInt 6, ValInt 1, ValInt 3]
-    --   bVec <- thawFromList [ValInt 1, ValInt 2, ValInt 3, ValInt 4, ValInt 5, ValInt 6]
-    --   let input =
-    --         [__i|
-    --           A = [5, 2, 4, 6, 1, 3]
-    --           for j = 2 to A.length
-    --             key = A[j]
-    --             i = j - 1
-    --             while i > 0 and A[i] > key
-    --               A[i + 1] = A[i]
-    --               i = i - 1
-    --             A[i + 1] = key
-    --          |]
-    --       expectedMapping =
-    --         mapFromList
-    --           [ (Identifier "A", ValVector bVec)
-    --           , (Identifier "j", ValInt 7)
-    --           , (Identifier "i", ValInt 5)
-    --           , (Identifier "key", ValInt 3)
-    --           ]
-    --   interpreterTest input expectedMapping
+    it "test18" $ do
+      aVec <- thawFromList [ValInt 5, ValInt 2, ValInt 4, ValInt 6, ValInt 1, ValInt 3]
+      bVec <- thawFromList [ValInt 1, ValInt 2, ValInt 3, ValInt 4, ValInt 5, ValInt 6]
+      let input =
+            [__i|
+              A = [5, 2, 4, 6, 1, 3]
+              for j = 2 to A.length
+                key = A[j]
+                i = j - 1
+                while i > 0 and A[i] > key
+                  A[i + 1] = A[i]
+                  i = i - 1
+                A[i + 1] = key
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "A", ValVector bVec)
+              , (Identifier "j", ValInt 7)
+              , (Identifier "i", ValInt 2)
+              , (Identifier "key", ValInt 3)
+              ]
+      interpreterTest input expectedMapping
     it "test19" $ do
       let input =
             [__i|
