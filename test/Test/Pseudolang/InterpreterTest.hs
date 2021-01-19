@@ -203,13 +203,13 @@ test =
               fun I()
                 x = 4
 
-                y = 3
+                return 300
 
-              b = 4
+              b = I()
              |]
           expectedMapping =
             mapFromList
               [ (Identifier "a", ValInt 3)
-              , (Identifier "b", ValInt 4)
+              , (Identifier "b", ValInt 300)
               ]
       interpreterTest input expectedMapping

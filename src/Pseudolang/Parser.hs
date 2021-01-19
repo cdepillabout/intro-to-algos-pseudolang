@@ -122,7 +122,7 @@ statementsParser = do
   -- List of either blank lines or statements
   eitherStatements <-
     some do
-      fmap Left (try $ indentParser *> blankLineParser) <|>
+      fmap Left (try $ optional indentParser *> blankLineParser) <|>
         fmap Right statementParser -- <?> "statement in a list of statements"
   -- Ignore the blank lines
   pure $ catRights eitherStatements
