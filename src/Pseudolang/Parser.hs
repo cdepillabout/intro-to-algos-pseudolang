@@ -89,12 +89,21 @@ newtype Identifier = Identifier Text
   deriving stock (Eq, Ord, Show)
 
 astParser :: Parser AST
-astParser = fmap AST $ many topLevelParser
+astParser = fmap AST topLevelsParser
+
+topLevelsParser :: Parser [TopLevel]
+topLevelsParser = do
+  eitherTopLevels <-
+    some do
+      fmap Left (try $ indentParser *> blankLineParser) <|>
+        fmap Right topLevelParser
+  pure $ catRights eitherTopLevels
 
 topLevelParser :: Parser TopLevel
-topLevelParser =
+topLevelParser = do
   fmap TopLevelFunDef funDefParser <|>
-  fmap TopLevelStatement statementParser
+    fmap TopLevelStatement statementParser <?>
+    "top level function or statement"
 
 funDefParser :: Parser FunDef
 funDefParser = do
@@ -104,16 +113,27 @@ funDefParser = do
   funcArgs <- sepBy identParser (tokenParser' TokComma)
   tokenParser' TokCloseParen
   newlineParser
-  statements <- indented statementsParser <?> "indented statements in function def"
+  statements <- indented statementsParser <?>
+    "indented statements in function definition"
   pure $ FunDef funcName funcArgs statements
 
 statementsParser :: Parser [Statement]
 statementsParser = do
-  some statementParser
+  -- List of either blank lines or statements
+  eitherStatements <-
+    some do
+      fmap Left (try $ indentParser *> blankLineParser) <|>
+        fmap Right statementParser -- <?> "statement in a list of statements"
+  -- Ignore the blank lines
+  pure $ catRights eitherStatements
+
+-- | Parse any number of blank lines
+blankLineParser :: Parser ()
+blankLineParser = newlineParser
 
 statementParser :: Parser Statement
 statementParser = do
-  indentParser
+  indentParser <?> "indentation beginning a statement"
   statementForLoopParser <|>
     statementWhileLoopParser <|>
     statementReturnParser <|>
@@ -304,3 +324,10 @@ exprTable =
 
     prefix :: Parser () -> (Expr -> Expr) -> Operator Parser Expr
     prefix parser exprCreator = Prefix (parser $> exprCreator)
+
+catRights :: [Either x a] -> [a]
+catRights = foldr f []
+  where
+    f :: Either x a -> [a] -> [a]
+    f (Right a) accum = a : accum
+    f (Left _) accum = accum

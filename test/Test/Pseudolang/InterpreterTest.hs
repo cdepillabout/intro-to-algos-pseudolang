@@ -195,3 +195,21 @@ test =
               [ (Identifier "a", ValInt 5)
               ]
       interpreterTest input expectedMapping
+    it "test15" $ do
+      let input =
+            [__i|
+              a = 3
+
+              fun I()
+                x = 4
+
+                y = 3
+
+              b = 4
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "a", ValInt 3)
+              , (Identifier "b", ValInt 4)
+              ]
+      interpreterTest input expectedMapping
