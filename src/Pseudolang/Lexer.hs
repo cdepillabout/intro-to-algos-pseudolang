@@ -57,7 +57,7 @@ lexer = do
   -- Throw away a comment at the start of a line.  The indentParser function
   -- handles comments that have been indented.  The newlineParser handles
   -- comments that happen after a newline.
-  optional lineCommentParser
+  void $ optional lineCommentParser
   choice
     [ reservedSymsParser
     , try reservedAlphaWordsParser
@@ -154,11 +154,11 @@ integerParser = lexemeParser (fmap TokInteger Megaparsec.Lexer.decimal)
 newlineParser :: Parser Token
 newlineParser = do
   newlineToken <- tokenParser do
-    char '\n'
+    void $ char '\n'
     pure TokNewline
   -- Throw away a comment at the start of a line.  The indentParser function
   -- handles comments that have been indented.
-  optional lineCommentParser
+  void $ optional lineCommentParser
   pure newlineToken
 
 indentParser :: Parser Token

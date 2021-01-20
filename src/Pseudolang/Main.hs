@@ -4,7 +4,7 @@ module Pseudolang.Main
 
 import Pseudolang.Prelude
 
-import Options.Applicative (Parser, argument, execParser, fullDesc, header, help, helper, info, metavar, progDesc, str)
+import Options.Applicative (Parser, ParserInfo, argument, execParser, fullDesc, header, help, helper, info, metavar, progDesc, str)
 
 import Pseudolang.Interpreter (parseAndInterpret)
 
@@ -25,7 +25,7 @@ cmdOptsParser = do
 runOptionParser :: IO CmdOpts
 runOptionParser = execParser opts
   where
-    opts :: _
+    opts :: ParserInfo CmdOpts
     opts =
       info
         (cmdOptsParser <**> helper)
