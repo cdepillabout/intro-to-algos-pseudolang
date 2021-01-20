@@ -68,7 +68,7 @@ instance Show Val where
   show (ValBool b) = show b
   show (ValInt i) = show i
   show (ValString i) = unpack i
-  show ValUnit = show "unit"
+  show ValUnit = "unit"
   show (ValVector v) = show g
     where
       g :: Vec.Vector Val
@@ -151,6 +151,7 @@ interpretFunDef funDef@(FunDef funName _ _) =
 interpretStatement :: Statement -> Interpret ()
 interpretStatement = \case
   StatementAssignment assignment -> interpretAssignment assignment
+  StatementExpr expr -> void $ interpretExpr expr
   StatementForLoop forLoop -> interpretForLoop forLoop
   StatementFunCall funCall -> void $ interpretFunCall funCall
   StatementIf expr statements elseIf -> undefined
@@ -172,7 +173,7 @@ interpretBuiltinFunCall (Identifier builtinFunName) funCallArgs = do
   funCallVals <- traverse interpretExpr funCallArgs
   case builtinFunName of
     "print" -> fmap Just $ interpretBuiltinPrint funCallVals
-    other -> pure Nothing
+    _ -> pure Nothing
 
 interpretFunCall :: FunCall -> Interpret Val
 interpretFunCall (FunCall funName funCallArgs) = do
@@ -268,11 +269,11 @@ interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident)
             ") doesn't have an value in the identifier mapping (" <>
             show mapping <>
             ") in a for loop, even though it definitely should"
-        Just (ValBool b) -> do
+        Just (ValInt i) -> pure i
+        Just val -> do
           fail $
             "The identifier (" <> show ident <>
-            ") in a for loop is a boolean and not an integer."
-        Just (ValInt i) -> pure i
+            ") in a for loop is a " <> show (valType val) <> " and not an integer."
 
 interpretWhileLoop :: WhileLoop -> Interpret ()
 interpretWhileLoop whileLoop@(WhileLoop conditionExpr bodyStatements) = do
@@ -382,11 +383,11 @@ interpretExprToInt expr = do
   val <- interpretExpr expr
   case val of
     ValInt int -> pure int
-    val -> error $ "Expecting an int, but got a val: " <> show val
+    val' -> error $ "Expecting an int, but got a val: " <> show val'
 
 interpretExprToBool :: Expr -> Interpret Bool
 interpretExprToBool expr = do
   val <- interpretExpr expr
   case val of
     ValBool bool' -> pure bool'
-    val -> error $ "Expecting a bool, but got a val: " <> show val
+    val' -> error $ "Expecting a bool, but got a val: " <> show val'

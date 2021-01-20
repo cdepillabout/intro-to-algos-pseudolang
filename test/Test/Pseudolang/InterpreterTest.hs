@@ -253,8 +253,7 @@ test =
               ]
       interpreterTest input expectedMapping
     it "test18" $ do
-      aVec <- thawFromList [ValInt 5, ValInt 2, ValInt 4, ValInt 6, ValInt 1, ValInt 3]
-      bVec <- thawFromList [ValInt 1, ValInt 2, ValInt 3, ValInt 4, ValInt 5, ValInt 6]
+      aVec <- thawFromList [ValInt 1, ValInt 2, ValInt 3, ValInt 4, ValInt 5, ValInt 6]
       let input =
             [__i|
               A = [5, 2, 4, 6, 1, 3]
@@ -268,7 +267,7 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ (Identifier "A", ValVector bVec)
+              [ (Identifier "A", ValVector aVec)
               , (Identifier "j", ValInt 7)
               , (Identifier "i", ValInt 2)
               , (Identifier "key", ValInt 3)
