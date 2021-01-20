@@ -50,20 +50,55 @@ test =
         , Token {token = TokIndent (mkPos 2), startPos = 6, endPos = 8}
         , Token {token = TokIdentifier "bye", startPos = 8, endPos = 11}
         ]
-    it "test4" $ do
+    it "test5" $ do
       parserTest tokenizer "hello 123"
         [ Token {token = TokIdentifier "hello", startPos = 0, endPos = 5}
         , Token {token = TokInteger 123, startPos = 6, endPos = 9}
         ]
-    it "test4" $ do
+    it "test6" $ do
       parserTest tokenizer "1 + 2"
         [ Token {token = TokInteger 1, startPos = 0, endPos = 1}
         , Token {token = TokPlus, startPos = 2, endPos = 3}
         , Token {token = TokInteger 2, startPos = 4, endPos = 5}
         ]
-    it "test5" $ do
+    it "test7" $ do
       parserTest tokenizer "1 + \"hello dog\""
         [ Token {token = TokInteger 1, startPos = 0, endPos = 1}
         , Token {token = TokPlus, startPos = 2, endPos = 3}
         , Token {token = TokString "hello dog", startPos = 4, endPos = 15}
+        ]
+    it "test8" $ do
+      parserTest tokenizer "1 // hello this comment\n3"
+        [ Token {token = TokInteger 1, startPos = 0, endPos = 1}
+        , Token {token = TokNewline, startPos = 23, endPos = 24}
+        , Token {token = TokInteger 3, startPos = 24, endPos = 25}
+        ]
+    it "test9" $ do
+      parserTest tokenizer "  1 // hello this comment\n  3"
+        [ Token {token = TokIndent (mkPos 2), startPos = 0, endPos = 2}
+        , Token {token = TokInteger 1, startPos = 2, endPos = 3}
+        , Token {token = TokNewline, startPos = 25, endPos = 26}
+        , Token {token = TokIndent (mkPos 2), startPos = 26, endPos = 28}
+        , Token {token = TokInteger 3, startPos = 28, endPos = 29}
+        ]
+    it "test10" $ do
+      parserTest tokenizer "  // comment on indented line\n  3"
+        [ Token {token = TokIndent (mkPos 2), startPos = 0, endPos = 2}
+        , Token {token = TokNewline, startPos = 29, endPos = 30}
+        , Token {token = TokIndent (mkPos 2), startPos = 30, endPos = 32}
+        , Token {token = TokInteger 3, startPos = 32, endPos = 33}
+        ]
+    it "test11" $ do
+      parserTest tokenizer "// comment on first line line\n  3"
+        [ Token {token = TokNewline, startPos = 29, endPos = 30}
+        , Token {token = TokIndent (mkPos 2), startPos = 30, endPos = 32}
+        , Token {token = TokInteger 3, startPos = 32, endPos = 33}
+        ]
+    it "test12" $ do
+      parserTest tokenizer "5\n// comment on non-indented line line\n  3"
+        [ Token {token = TokInteger 5, startPos = 0, endPos = 1}
+        , Token {token = TokNewline, startPos = 1, endPos = 2}
+        , Token {token = TokNewline, startPos = 38, endPos = 39}
+        , Token {token = TokIndent (mkPos 2), startPos = 39, endPos = 41}
+        , Token {token = TokInteger 3, startPos = 41, endPos = 42}
         ]

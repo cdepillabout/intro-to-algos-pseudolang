@@ -53,7 +53,11 @@ tokenizer' :: Parser [Token]
 tokenizer' = some lexer
 
 lexer :: Parser Token
-lexer =
+lexer = do
+  -- Throw away a comment at the start of a line.  The indentParser function
+  -- handles comments that have been indented.  The newlineParser handles
+  -- comments that happen after a newline.
+  optional lineCommentParser
   choice
     [ reservedSymsParser
     , try reservedAlphaWordsParser
@@ -64,8 +68,15 @@ lexer =
     , integerParser
     ]
 
+lineCommentParser :: Parser ()
+lineCommentParser = Megaparsec.Lexer.skipLineComment "//"
+
 spaceParser :: Parser ()
-spaceParser = Megaparsec.Lexer.space hspace1 empty empty
+spaceParser =
+  Megaparsec.Lexer.space
+    hspace1
+    lineCommentParser
+    empty
 
 tokenParser :: Parser Tok -> Parser Token
 tokenParser p = do
@@ -124,7 +135,10 @@ reservedSyms =
 
 reservedSymsParser :: Parser Token
 reservedSymsParser = do
-  lexemeParser (choice $ fmap (\(str, tok) -> string str $> tok) reservedSyms)
+  let reservedSymParsers :: [Parser Tok]
+      reservedSymParsers =
+        fmap (\(str, tok) -> string str $> tok) reservedSyms
+  lexemeParser $ choice reservedSymParsers
 
 identifierParser :: Parser Token
 identifierParser = do
@@ -138,9 +152,19 @@ integerParser :: Parser Token
 integerParser = lexemeParser (fmap TokInteger Megaparsec.Lexer.decimal)
 
 newlineParser :: Parser Token
-newlineParser = tokenParser (char '\n' $> TokNewline)
+newlineParser = do
+  newlineToken <- tokenParser do
+    char '\n'
+    pure TokNewline
+  -- Throw away a comment at the start of a line.  The indentParser function
+  -- handles comments that have been indented.
+  optional lineCommentParser
+  pure newlineToken
 
 indentParser :: Parser Token
-indentParser = tokenParser do
-  spaces <- some (char ' ')
-  pure $ TokIndent (mkPos $ length spaces)
+indentParser =
+  -- We use lexemeParser here because we specificially need to handle parsing
+  -- line comments that come directly after an indent.
+  lexemeParser do
+    spaces <- some (char ' ')
+    pure $ TokIndent (mkPos $ length spaces)
