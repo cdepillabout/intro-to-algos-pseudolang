@@ -209,8 +209,27 @@ interpretFunCall (FunCall funName funCallArgs) = do
           put currInterpState
           pure returnVal
 
+interpretElseIfElse :: ElseIfElse -> Interpret ()
+interpretElseIfElse (ElseIfElse elseIfs elseStatements) =
+  case elseIfs of
+    (ElseIf condition elseIfStatements : moreElseIfs) -> do
+      conditionVal <- interpretExprToBool condition
+      if conditionVal
+        then interpretStatements (toList elseIfStatements)
+        else interpretElseIfElse (ElseIfElse moreElseIfs elseStatements)
+    [] ->
+      -- No elseif conditions, so we just execute the else statements
+      interpretStatements (toList elseStatements)
+
 interpretIf :: If -> Interpret ()
-interpretIf (If condition thenStatements elseIfElseBlocks) = undefined
+interpretIf (If conditionExpr thenStatements maybeElseIfElseBlocks) = do
+  conditionVal <- interpretExprToBool conditionExpr
+  if conditionVal
+    then interpretStatements (toList thenStatements)
+    else
+      case maybeElseIfElseBlocks of
+        Nothing -> pure ()
+        Just elseIfElseBlocks -> interpretElseIfElse elseIfElseBlocks
 
 interpretAssignment :: Assignment -> Interpret ()
 interpretAssignment (Assignment assignmentLHS expr) = do

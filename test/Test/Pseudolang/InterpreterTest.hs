@@ -283,3 +283,55 @@ test =
               [ (Identifier "A", ValString "hello oooo")
               ]
       interpreterTest input expectedMapping
+    it "test20" $ do
+      let input =
+            [__i|
+              x = 3
+              if x > 5
+                b = 4
+              elseif x > 100
+                ddddddd = 2000
+              else c = 100
+                d = 20
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "x", ValInt 3)
+              , (Identifier "c", ValInt 100)
+              , (Identifier "d", ValInt 20)
+              ]
+      interpreterTest input expectedMapping
+    it "test21" $ do
+      let input =
+            [__i|
+              x = 3
+              if x < 5
+                b = 4
+              elseif x > 100
+                ddddddd = 2000
+              else c = 100
+                d = 20
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "x", ValInt 3)
+              , (Identifier "b", ValInt 4)
+              ]
+      interpreterTest input expectedMapping
+    it "test22" $ do
+      let input =
+            [__i|
+              x = 3
+              if x > 5
+                b = 4
+              elseif x < 100
+                ddd = 2000
+              else c = 100
+                d = 20
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "x", ValInt 3)
+              , (Identifier "ddd", ValInt 2000)
+              ]
+      interpreterTest input expectedMapping
