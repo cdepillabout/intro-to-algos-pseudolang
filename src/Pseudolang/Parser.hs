@@ -5,8 +5,9 @@ import Pseudolang.Prelude hiding (many, some, try)
 
 import Control.Monad.Combinators.Expr (Operator(InfixL, Prefix), makeExprParser)
 import Control.Monad.Reader (local)
+import Data.List.NonEmpty (NonEmpty((:|)))
 import qualified Data.Set as Set
-import Text.Megaparsec (ErrorItem, ParsecT, Pos, SourcePos, between, choice, eof, getOffset, many, mkPos, notFollowedBy, sepBy, some, token, try, unPos, (<?>))
+import Text.Megaparsec (ErrorItem(Label), ParsecT, Pos, SourcePos, between, choice, eof, failure, getOffset, many, mkPos, notFollowedBy, sepBy, some, token, try, unPos, (<?>))
 import Text.Megaparsec.Char (alphaNumChar, char, hspace1, letterChar, string)
 
 import Pseudolang.Lexer (Tok(..), Token(Token))
@@ -26,13 +27,19 @@ data Statement
   | StatementExpr Expr
   | StatementFunCall FunCall
   | StatementForLoop ForLoop
-  | StatementIf Expr (NonEmpty Statement) (Maybe ElseIf)
+  | StatementIf If
   | StatementReturn Expr
   | StatementWhileLoop WhileLoop
   deriving stock (Eq, Ord, Show)
 
-data ElseIf = ElseIf
-  { elseIfs :: [(Expr, NonEmpty Statement)]
+data If = If Expr (NonEmpty Statement) (Maybe ElseIfElse)
+  deriving stock (Eq, Ord, Show)
+
+data ElseIf = ElseIf Expr (NonEmpty Statement)
+  deriving stock (Eq, Ord, Show)
+
+data ElseIfElse = ElseIfElse
+  { elseIfs :: [ElseIf]
   , elseStatements :: NonEmpty Statement
   }
   deriving stock (Eq, Ord, Show)
@@ -118,6 +125,16 @@ funDefParser = do
     "indented statements in function definition"
   pure $ FunDef funcName funcArgs statements
 
+nonEmptyStatementsParser :: Parser (NonEmpty Statement)
+nonEmptyStatementsParser = do
+  statements <- statementsParser
+  case statements of
+    [] ->
+      failure
+        Nothing
+        (singletonSet $ Label $ 'E' :| "xpecting at least one statement")
+    (h:ts) -> pure (h :| ts)
+
 statementsParser :: Parser [Statement]
 statementsParser = do
   -- List of either blank lines or statements
@@ -137,6 +154,7 @@ statementParser = do
   indentParser <?> "indentation beginning a statement"
   statementForLoopParser <|>
     statementWhileLoopParser <|>
+    statementIfParser <|>
     statementReturnParser <|>
     try statementFunCallParser <|>
     statementAssignmentParser <?>
@@ -171,6 +189,11 @@ statementWhileLoopParser = do
   whileLoop <- whileParser
   pure $ StatementWhileLoop whileLoop
 
+statementIfParser :: Parser Statement
+statementIfParser = do
+  if' <- ifParser
+  pure $ StatementIf if'
+
 getCurrIndent :: Parser IndentAmount
 getCurrIndent = ask
 
@@ -196,6 +219,38 @@ forParser = do
   newlineParser <?> "newline after for loop line"
   statements <- indented statementsParser <?> "indented statements in for loop"
   pure $ ForLoop assignment forDirection goal statements
+
+elseIfParser :: Parser ElseIf
+elseIfParser = do
+  tokenParser' TokElseIf <?> "elseif"
+  condition <- exprParser <?> "elseif condition"
+  newlineParser <?> "newline after elseif condition line"
+  statements <-
+    indented nonEmptyStatementsParser <?> "indented statements in an elseif block"
+  pure $ ElseIf condition statements
+
+elseIfElseParser :: Parser ElseIfElse
+elseIfElseParser = do
+  elseIfBlocks <- many elseIfParser
+  tokenParser' TokElse
+  statementDirectlyAfter <- statementParser <?> "single statement on same line as else"
+  maybeStatements <-
+    optional (indented statementsParser <?> "indented statements in else block")
+  let elseStatements =
+        case maybeStatements of
+          Nothing -> statementDirectlyAfter :| []
+          Just statements -> statementDirectlyAfter :| statements
+  pure $ ElseIfElse elseIfBlocks elseStatements
+
+ifParser :: Parser If
+ifParser = do
+  tokenParser' TokIf
+  condition <- exprParser <?> "if condition"
+  newlineParser <?> "newline after if condition line"
+  statements <-
+    indented nonEmptyStatementsParser <?> "indented statements in an if-then block"
+  elseIfElse <- optional elseIfElseParser
+  pure $ If condition statements elseIfElse
 
 whileParser :: Parser WhileLoop
 whileParser = do

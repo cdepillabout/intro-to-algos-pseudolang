@@ -154,7 +154,7 @@ interpretStatement = \case
   StatementExpr expr -> void $ interpretExpr expr
   StatementForLoop forLoop -> interpretForLoop forLoop
   StatementFunCall funCall -> void $ interpretFunCall funCall
-  StatementIf expr statements elseIf -> undefined
+  StatementIf if' -> interpretIf if'
   StatementReturn expr -> do
     val <- interpretExpr expr
     throwError val
@@ -208,6 +208,9 @@ interpretFunCall (FunCall funName funCallArgs) = do
               pure
           put currInterpState
           pure returnVal
+
+interpretIf :: If -> Interpret ()
+interpretIf (If condition thenStatements elseIfElseBlocks) = undefined
 
 interpretAssignment :: Assignment -> Interpret ()
 interpretAssignment (Assignment assignmentLHS expr) = do

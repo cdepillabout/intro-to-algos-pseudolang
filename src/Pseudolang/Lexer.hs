@@ -23,11 +23,14 @@ data Tok
   | TokComma
   | TokDivide
   | TokDownTo
+  | TokElse
+  | TokElseIf
   | TokEquals
   | TokFor
   | TokFun
   | TokGreaterThan
   | TokIdentifier Text -- ^ Identifier name.
+  | TokIf
   | TokIndent Pos -- ^ How many spaces this indent includes.
   | TokInteger Integer
   | TokLessThan
@@ -60,7 +63,7 @@ lexer = do
   void $ optional lineCommentParser
   choice
     [ reservedSymsParser
-    , try reservedAlphaWordsParser
+    , reservedAlphaWordsParser
     , identifierParser
     , stringLiteralParser
     , newlineParser
@@ -99,20 +102,36 @@ reservedAlphaWords :: [(Text, Tok)]
 reservedAlphaWords =
   [ ("and", TokAnd)
   , ("downto", TokDownTo)
+  , ("else", TokElse)
+  , ("elseif", TokElseIf)
   , ("for", TokFor)
   , ("fun", TokFun)
+  , ("if", TokIf)
   , ("or", TokOr)
   , ("return", TokReturn)
   , ("to", TokTo)
   , ("while", TokWhile)
   ]
 
+reservedAlphaWordParser :: Text -> Tok -> Parser Tok
+reservedAlphaWordParser str tok = do
+  void $ string str
+  notFollowedBy alphaNumChar
+  pure tok
+
+-- | Parse a reserved alphaword (like @if@ or @and@).
+--
+-- Backtracks on failure.  This can be used immediately before the identifier
+-- parser without any trouble.
 reservedAlphaWordsParser :: Parser Token
 reservedAlphaWordsParser = do
   lexemeParser do
-    tok <- choice $ fmap (\(str, tok) -> string str $> tok) reservedAlphaWords
-    notFollowedBy alphaNumChar
+    tok <- choice reservedAlphaWordParsers
     pure tok
+  where
+    reservedAlphaWordParsers :: [Parser Tok]
+    reservedAlphaWordParsers =
+      fmap (\(str, tok) -> try $ reservedAlphaWordParser str tok) reservedAlphaWords
 
 reservedSyms :: [(Text, Tok)]
 reservedSyms =

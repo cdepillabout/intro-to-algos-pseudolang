@@ -1,4 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE OverloadedLists #-}
 
 module Test.Pseudolang.ParserTest where
 
@@ -55,6 +56,8 @@ parserTestWithIndent initialIndentAmount readerTParser input expectedRes = do
   case eitherRes of
     Right res -> res `shouldBe` expectedRes
     Left err -> expectationFailure $ unpack $ pShow err
+
+
 
 mkTok :: Tok -> Token
 mkTok tok = Token tok 0 0
@@ -311,3 +314,120 @@ test =
             ExprArrayLit
               [ExprInteger 1, ExprString "x y", ExprInteger 5]
       parserTestWithIndent 2 exprParser input expectedAST
+    it "test20" $ do
+      let input =
+            [__i|
+              if k < 3
+                b = 3
+             |]
+          expectedAST =
+            If
+              (ExprLessThan (ExprVar (Identifier "k")) (ExprInteger 3))
+              [ StatementAssignment
+                  (Assignment (AssignmentLHSIdentifier (Identifier "b")) (ExprInteger 3))
+              ]
+              Nothing
+      parserTest ifParser input expectedAST
+    it "test21" $ do
+      let input =
+            [__i|
+              if k < 3
+                b = 3
+              else c = 3
+             |]
+          expectedAST =
+            If
+              (ExprLessThan (ExprVar (Identifier "k")) (ExprInteger 3))
+              [ StatementAssignment
+                  (Assignment (AssignmentLHSIdentifier (Identifier "b")) (ExprInteger 3))
+              ]
+              (Just
+                (ElseIfElse
+                  []
+                  [ StatementAssignment
+                      (Assignment
+                        (AssignmentLHSIdentifier (Identifier "c")) (ExprInteger 3))
+                  ]
+                )
+              )
+      parserTest ifParser input expectedAST
+    it "test22" $ do
+      let input =
+            [__i|
+              if k < 3
+                b = 3
+              else c = 3
+                d = 4
+             |]
+          expectedAST =
+            If
+              (ExprLessThan (ExprVar (Identifier "k")) (ExprInteger 3))
+              [ StatementAssignment
+                  (Assignment (AssignmentLHSIdentifier (Identifier "b")) (ExprInteger 3))
+              ]
+              (Just
+                (ElseIfElse
+                  []
+                  [ StatementAssignment
+                      (Assignment
+                        (AssignmentLHSIdentifier (Identifier "c")) (ExprInteger 3))
+                  , StatementAssignment
+                      (Assignment
+                        (AssignmentLHSIdentifier (Identifier "d")) (ExprInteger 4))
+                  ]
+                )
+              )
+      parserTest ifParser input expectedAST
+    it "test23" $ do
+      let input =
+            [__i|
+              if k < 3
+                b = 3
+              elseif v > 10
+                x = 4
+              else c = 3
+                d = 4
+             |]
+          expectedAST =
+            If
+              (ExprLessThan (ExprVar (Identifier "k")) (ExprInteger 3))
+              [ StatementAssignment
+                  (Assignment (AssignmentLHSIdentifier (Identifier "b")) (ExprInteger 3))
+              ]
+              (Just
+                (ElseIfElse
+                  [ ElseIf
+                      (ExprGreaterThan (ExprVar (Identifier "v")) (ExprInteger 10))
+                      [ StatementAssignment
+                          (Assignment
+                            (AssignmentLHSIdentifier (Identifier "x")) (ExprInteger 4))
+                      ]
+                  ]
+                  [ StatementAssignment
+                      (Assignment
+                        (AssignmentLHSIdentifier (Identifier "c")) (ExprInteger 3))
+                  , StatementAssignment
+                      (Assignment
+                        (AssignmentLHSIdentifier (Identifier "d")) (ExprInteger 4))
+                  ]
+                )
+              )
+      parserTest ifParser input expectedAST
+    it "test24" $ do
+      let input =
+            [__i|
+              elseif v > 10
+                x = 4
+                b = 10
+             |]
+          expectedAST =
+            ElseIf
+              (ExprGreaterThan (ExprVar (Identifier "v")) (ExprInteger 10))
+              [ StatementAssignment
+                  (Assignment
+                    (AssignmentLHSIdentifier (Identifier "x")) (ExprInteger 4))
+              , StatementAssignment
+                  (Assignment
+                    (AssignmentLHSIdentifier (Identifier "b")) (ExprInteger 10))
+              ]
+      parserTest elseIfParser input expectedAST

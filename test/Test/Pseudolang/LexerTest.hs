@@ -102,3 +102,9 @@ test =
         , Token {token = TokIndent (mkPos 2), startPos = 39, endPos = 41}
         , Token {token = TokInteger 3, startPos = 41, endPos = 42}
         ]
+    it "test13" $ do
+      parserTest tokenizer "if elseif else"
+        [ Token {token = TokIf, startPos = 0, endPos = 2}
+        , Token {token = TokElseIf, startPos = 3, endPos = 9}
+        , Token {token = TokElse, startPos = 10, endPos = 14}
+        ]
