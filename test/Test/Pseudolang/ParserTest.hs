@@ -76,7 +76,7 @@ test =
             , TokPlus
             , TokIdentifier "bar"
             ]
-          expectedAST = ExprPlus (ExprVar (Identifier "foo")) (ExprVar (Identifier "bar"))
+          expectedAST = ExprPlus (ExprVar "foo") (ExprVar "bar")
       parserFromTokenizerTest exprParser (mkToks inputTokens) expectedAST
     it "test3" $ do
       let inputTokens =
@@ -98,7 +98,7 @@ test =
       let input = "x = 1 + 2"
           expectedAST =
             Assignment
-              (AssignmentLHSIdentifier (Identifier "x"))
+              (AssignmentLHSIdentifier "x")
               (ExprPlus
                 (ExprInteger 1)
                 (ExprInteger 2)
@@ -117,7 +117,7 @@ test =
           expectedAST =
             StatementAssignment
               (Assignment
-                (AssignmentLHSIdentifier (Identifier "x"))
+                (AssignmentLHSIdentifier "x")
                 (ExprPlus (ExprInteger 1) (ExprInteger 2))
               )
       parserTest statementParser input expectedAST
@@ -126,7 +126,7 @@ test =
           expectedAST =
             [ StatementAssignment
                 (Assignment
-                  (AssignmentLHSIdentifier (Identifier "x"))
+                  (AssignmentLHSIdentifier "x")
                   (ExprPlus (ExprInteger 1) (ExprInteger 2))
                 )
             ]
@@ -138,7 +138,7 @@ test =
               [ TopLevelStatement
                   (StatementAssignment
                     (Assignment
-                      (AssignmentLHSIdentifier (Identifier "x"))
+                      (AssignmentLHSIdentifier "x")
                       (ExprPlus (ExprInteger 1) (ExprInteger 2))
                     )
                   )
@@ -337,16 +337,16 @@ test =
              |]
           expectedAST =
             If
-              (ExprLessThan (ExprVar (Identifier "k")) (ExprInteger 3))
+              (ExprLessThan (ExprVar "k") (ExprInteger 3))
               [ StatementAssignment
-                  (Assignment (AssignmentLHSIdentifier (Identifier "b")) (ExprInteger 3))
+                  (Assignment (AssignmentLHSIdentifier "b") (ExprInteger 3))
               ]
               (Just
                 (ElseIfElse
                   []
                   [ StatementAssignment
                       (Assignment
-                        (AssignmentLHSIdentifier (Identifier "c")) (ExprInteger 3))
+                        (AssignmentLHSIdentifier "c") (ExprInteger 3))
                   ]
                 )
               )
@@ -361,7 +361,7 @@ test =
              |]
           expectedAST =
             If
-              (ExprLessThan (ExprVar (Identifier "k")) (ExprInteger 3))
+              (ExprLessThan (ExprVar "k") (ExprInteger 3))
               [ StatementAssignment
                   (Assignment (AssignmentLHSIdentifier (Identifier "b")) (ExprInteger 3))
               ]
@@ -370,10 +370,10 @@ test =
                   []
                   [ StatementAssignment
                       (Assignment
-                        (AssignmentLHSIdentifier (Identifier "c")) (ExprInteger 3))
+                        (AssignmentLHSIdentifier "c") (ExprInteger 3))
                   , StatementAssignment
                       (Assignment
-                        (AssignmentLHSIdentifier (Identifier "d")) (ExprInteger 4))
+                        (AssignmentLHSIdentifier "d") (ExprInteger 4))
                   ]
                 )
               )
@@ -390,25 +390,25 @@ test =
              |]
           expectedAST =
             If
-              (ExprLessThan (ExprVar (Identifier "k")) (ExprInteger 3))
+              (ExprLessThan (ExprVar "k") (ExprInteger 3))
               [ StatementAssignment
-                  (Assignment (AssignmentLHSIdentifier (Identifier "b")) (ExprInteger 3))
+                  (Assignment (AssignmentLHSIdentifier "b") (ExprInteger 3))
               ]
               (Just
                 (ElseIfElse
                   [ ElseIf
-                      (ExprGreaterThan (ExprVar (Identifier "v")) (ExprInteger 10))
+                      (ExprGreaterThan (ExprVar "v") (ExprInteger 10))
                       [ StatementAssignment
                           (Assignment
-                            (AssignmentLHSIdentifier (Identifier "x")) (ExprInteger 4))
+                            (AssignmentLHSIdentifier "x") (ExprInteger 4))
                       ]
                   ]
                   [ StatementAssignment
                       (Assignment
-                        (AssignmentLHSIdentifier (Identifier "c")) (ExprInteger 3))
+                        (AssignmentLHSIdentifier "c") (ExprInteger 3))
                   , StatementAssignment
                       (Assignment
-                        (AssignmentLHSIdentifier (Identifier "d")) (ExprInteger 4))
+                        (AssignmentLHSIdentifier "d") (ExprInteger 4))
                   ]
                 )
               )
@@ -422,12 +422,22 @@ test =
              |]
           expectedAST =
             ElseIf
-              (ExprGreaterThan (ExprVar (Identifier "v")) (ExprInteger 10))
+              (ExprGreaterThan (ExprVar "v") (ExprInteger 10))
               [ StatementAssignment
                   (Assignment
-                    (AssignmentLHSIdentifier (Identifier "x")) (ExprInteger 4))
+                    (AssignmentLHSIdentifier "x") (ExprInteger 4))
               , StatementAssignment
                   (Assignment
-                    (AssignmentLHSIdentifier (Identifier "b")) (ExprInteger 10))
+                    (AssignmentLHSIdentifier "b") (ExprInteger 10))
               ]
       parserTest elseIfParser input expectedAST
+    it "test25" $ do
+      let input =
+            [__i|
+              x = infinity
+             |]
+          expectedAST =
+            StatementAssignment
+              (Assignment
+                (AssignmentLHSIdentifier "x") ExprInfinity)
+      parserTest statementParser input expectedAST

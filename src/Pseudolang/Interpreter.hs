@@ -56,9 +56,112 @@ setVar ident val = do
        }
     )
 
+data ValInt
+  = ValIntInteger !Integer
+  | ValIntPositiveInfinity
+  | ValIntNegativeInfinity
+
+eqValInt :: ValInt -> ValInt -> Bool
+eqValInt (ValIntInteger i1) (ValIntInteger i2) = i1 == i2
+eqValInt _ _ =
+  -- Infinity is never equal with anything, even itself
+  False
+
+compareValInt :: ValInt -> ValInt -> Ordering
+compareValInt (ValIntInteger i1) (ValIntInteger i2) = compare i1 i2
+compareValInt ValIntNegativeInfinity _ =
+  -- Negative infinity is less than everything, even itself.
+  LT
+compareValInt _ ValIntPositiveInfinity =
+  -- Positive infinity is greater than everything, even itself.
+  GT
+
+greaterThanValInt :: ValInt -> ValInt -> Bool
+greaterThanValInt v1 v2 =
+  case compareValInt v1 v2 of
+    GT -> True
+    _ -> False
+
+lessThanValInt :: ValInt -> ValInt -> Bool
+lessThanValInt v1 v2 =
+  case compareValInt v1 v2 of
+    LT -> True
+    _ -> False
+
+minusValInt :: ValInt -> ValInt -> ValInt
+minusValInt (ValIntInteger i1) (ValIntInteger i2) = ValIntInteger $ i1 - i2
+minusValInt ValIntPositiveInfinity _ =
+  -- Positive infinity minus anything is still positive infinity.
+  ValIntPositiveInfinity
+minusValInt ValIntNegativeInfinity _ =
+  -- Negative infinity minus anything is still negative infinity.
+  ValIntNegativeInfinity
+
+plusValInt :: ValInt -> ValInt -> ValInt
+plusValInt (ValIntInteger i1) (ValIntInteger i2) = ValIntInteger $ i1 + i2
+plusValInt ValIntPositiveInfinity _ =
+  -- Positive infinity plus anything is still positive infinity.
+  ValIntPositiveInfinity
+plusValInt ValIntNegativeInfinity _ =
+  -- Negative infinity plus anything is still negative infinity.
+  ValIntNegativeInfinity
+
+timesValInt :: ValInt -> ValInt -> ValInt
+timesValInt (ValIntInteger i1) (ValIntInteger i2) = ValIntInteger $ i1 * i2
+timesValInt ValIntPositiveInfinity _ =
+  -- Positive infinity times anything is still positive infinity.
+  -- TODO: Should there be some logic here about positive infinity times a
+  -- negative number is negative infinity?
+  ValIntPositiveInfinity
+timesValInt ValIntNegativeInfinity _ =
+  -- Negative infinity times anything is still negative infinity.
+  -- TODO: See above.
+  ValIntNegativeInfinity
+
+quotValInt :: ValInt -> ValInt -> ValInt
+quotValInt (ValIntInteger i1) (ValIntInteger i2) = ValIntInteger $ i1 `quot` i2
+quotValInt ValIntPositiveInfinity _ =
+  -- Positive infinity div anything is still positive infinity.
+  -- TODO: Should there be some logic here about positive infinity div a
+  -- negative number is negative infinity?
+  ValIntPositiveInfinity
+quotValInt ValIntNegativeInfinity _ =
+  -- Negative infinity div anything is still negative infinity.
+  -- TODO: See above.
+  ValIntNegativeInfinity
+
+negateValInt :: ValInt -> ValInt
+negateValInt (ValIntInteger i) = ValIntInteger $ negate i
+-- Negating positive and negative infinity flip them around.
+negateValInt ValIntPositiveInfinity = ValIntNegativeInfinity
+negateValInt ValIntPositiveInfinity = ValIntNegativeInfinity
+
+absValInt :: ValInt -> ValInt
+absValInt (ValIntInteger i) = ValIntInteger $ abs i
+absValInt _ = ValIntPositiveInfinity
+
+signumValInt :: ValInt -> ValInt
+signumValInt (ValIntInteger i) = ValIntInteger $ signum i
+signumValInt ValIntPositiveInfinity = ValIntInteger 1
+signumValInt ValIntNegativeInfinity = ValIntInteger (-1)
+
+instance Num ValInt where
+  (+) = plusValInt
+  (-) = minusValInt
+  negate = negateValInt
+  (*) = timesValInt
+  abs = absValInt
+  signum = signumValInt
+  fromInteger = ValIntInteger
+
+instance Show ValInt where
+  show (ValIntInteger i) = show i
+  show ValIntPositiveInfinity = "infinity"
+  show ValIntNegativeInfinity = "-infinity"
+
 data Val
   = ValBool !Bool
-  | ValInt !Integer
+  | ValInt !ValInt
   | ValString !Text
   | ValUnit
   | ValVector (IOVector Val)
@@ -77,7 +180,7 @@ instance Show Val where
 
 instance Eq Val where
   ValBool b1 == ValBool b2 = b1 == b2
-  ValInt i1 == ValInt i2 = i1 == i2
+  ValInt i1 == ValInt i2 = eqValInt i1 i2
   ValString s1 == ValString s2 = s1 == s2
   ValUnit == ValUnit = True
   ValVector v1 == ValVector v2 =
@@ -114,7 +217,7 @@ parseAndInterpretToInterpStateWithInitial inputText initInterpState = do
           eitherAST = parse (parser <* eof) "" tokens
       case eitherAST of
         Right ast -> interpretToInterpStateWithInitial ast initInterpState
-        Left err -> error $ "Error in parsing: " <> (unpack $ pShow err)
+        Left err -> fail $ "Error in parsing: " <> (unpack $ pShow err)
 
 parseAndInterpretToInterpState :: Text -> IO InterpState
 parseAndInterpretToInterpState text =
@@ -241,7 +344,7 @@ interpretAssignmentLHS :: AssignmentLHS -> Val -> Interpret ()
 interpretAssignmentLHS (AssignmentLHSIdentifier ident) val = do
   setVar ident val
 interpretAssignmentLHS (AssignmentLHSArrayIndex (ArrayIndex arrayIdent expr)) val = do
-  idx <- interpretExprToInt expr
+  idx <- interpretExprToInteger expr
   v <- getIdentVec arrayIdent
   liftIO $ MVec.write v (fromIntegral idx - 1) val
 
@@ -255,11 +358,16 @@ interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident)
   where
     -- This is the function that we can use to either add one or subtract one
     -- from the identifier that we are looping over.
-    identForModifier :: Integer -> Integer
-    identForModifier x =
-      case direction of
-        ForDirectionDownTo -> x - 1
-        ForDirectionTo -> x + 1
+    --
+    -- If the identifier ever becomes infinity, just keep that value.
+    identForModifier :: ValInt -> ValInt
+    identForModifier ValIntPositiveInfinity = ValIntPositiveInfinity
+    identForModifier ValIntNegativeInfinity = ValIntNegativeInfinity
+    identForModifier (ValIntInteger i) =
+      ValIntInteger $
+        case direction of
+          ForDirectionDownTo -> i - 1
+          ForDirectionTo -> i + 1
 
     loop :: [Statement] -> Interpret ()
     loop [] = do
@@ -275,12 +383,12 @@ interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident)
     loopWhileNotGoal :: Interpret ()
     loopWhileNotGoal = do
       i <- getLoopIdentVal
-      goal <- interpretExprToInt goalExpr
-      if i > goal
+      goal <- interpretExprToValInt goalExpr
+      if greaterThanValInt i goal
         then pure ()
         else loop bodyStatements
 
-    getLoopIdentVal :: Interpret Integer
+    getLoopIdentVal :: Interpret ValInt
     getLoopIdentVal = do
       maybeIdentVal <- getVar ident
       case maybeIdentVal of
@@ -317,7 +425,7 @@ interpretExpr = \case
         bool2 <- interpretExprToBool expr2
         pure $ ValBool bool2
   ExprArrayIndex (ArrayIndex arrIdent idxExpr) -> do
-    idx <- interpretExprToInt idxExpr
+    idx <- interpretExprToInteger idxExpr
     vec <- getIdentVec arrIdent
     liftIO $ MVec.read vec (fromIntegral idx - 1)
   ExprArrayLit exprs -> do
@@ -325,28 +433,29 @@ interpretExpr = \case
     vec <- Vec.thaw (Vec.fromList vals)
     pure $ ValVector vec
   ExprDivide expr1 expr2 -> do
-    int1 <- interpretExprToInt expr1
-    int2 <- interpretExprToInt expr2
-    pure $ ValInt $ int1 `quot` int2
+    valInt1 <- interpretExprToValInt expr1
+    valInt2 <- interpretExprToValInt expr2
+    pure $ ValInt $ quotValInt valInt1 valInt2
   ExprGreaterThan expr1 expr2 -> do
-    int1 <- interpretExprToInt expr1
-    int2 <- interpretExprToInt expr2
-    pure $ ValBool $ int1 > int2
+    valInt1 <- interpretExprToValInt expr1
+    valInt2 <- interpretExprToValInt expr2
+    pure $ ValBool $ greaterThanValInt valInt1 valInt2
   ExprFunCall funCall -> do
     res <- interpretFunCall funCall
     pure res
-  ExprInteger int -> pure $ ValInt int
+  ExprInfinity -> pure $ ValInt ValIntPositiveInfinity
+  ExprInteger int -> pure $ ValInt $ ValIntInteger int
   ExprLessThan expr1 expr2 -> do
-    int1 <- interpretExprToInt expr1
-    int2 <- interpretExprToInt expr2
-    pure $ ValBool $ int1 < int2
+    valInt1 <- interpretExprToValInt expr1
+    valInt2 <- interpretExprToValInt expr2
+    pure $ ValBool $ lessThanValInt valInt1 valInt2
   ExprMinus expr1 expr2 -> do
-    int1 <- interpretExprToInt expr1
-    int2 <- interpretExprToInt expr2
-    pure $ ValInt $ int1 - int2
+    valInt1 <- interpretExprToValInt expr1
+    valInt2 <- interpretExprToValInt expr2
+    pure $ ValInt $ minusValInt valInt1 valInt2
   ExprNegate expr -> do
-    int <- interpretExprToInt expr
-    pure $ ValInt $ negate int
+    valInt <- interpretExprToValInt expr
+    pure $ ValInt $ negateValInt valInt
   ExprOr expr1 expr2 -> do
     bool1 <- interpretExprToBool expr1
     -- We need to evaluate the second expression lazily.
@@ -357,15 +466,15 @@ interpretExpr = \case
         pure $ ValBool bool2
   ExprParens expr -> interpretExpr expr
   ExprPlus expr1 expr2 -> do
-    int1 <- interpretExprToInt expr1
-    int2 <- interpretExprToInt expr2
-    pure $ ValInt $ int1 + int2
+    valInt1 <- interpretExprToValInt expr1
+    valInt2 <- interpretExprToValInt expr2
+    pure $ ValInt $ plusValInt valInt1 valInt2
   ExprProperty prop -> interpretProperty prop
   ExprString str -> pure $ ValString str
   ExprTimes expr1 expr2 -> do
-    int1 <- interpretExprToInt expr1
-    int2 <- interpretExprToInt expr2
-    pure $ ValInt $ int1 * int2
+    valInt1 <- interpretExprToValInt expr1
+    valInt2 <- interpretExprToValInt expr2
+    pure $ ValInt $ timesValInt valInt1 valInt2
   ExprVar identifier -> do
     getIdentVal identifier
 
@@ -379,7 +488,7 @@ interpretProperty (Property ident propIdent) =
       -- .length is only available on vectors.
       vec <- getIdentVec ident
       let vecLength = MVec.length vec
-      pure $ ValInt (fromIntegral vecLength)
+      pure $ ValInt $ ValIntInteger (fromIntegral vecLength)
     (Identifier x) ->
       fail $ "Trying to access property " <> unpack x <> ", but unknown property."
 
@@ -387,7 +496,7 @@ getIdentVal :: Identifier -> Interpret Val
 getIdentVal ident = do
   maybeVal <- getVar ident
   case maybeVal of
-    Nothing -> error $ "No value for identifier: " <> show ident
+    Nothing -> fail $ "No value for identifier: " <> show ident
     Just val -> pure val
 
 getIdentVec :: Identifier -> Interpret (IOVector Val)
@@ -400,16 +509,27 @@ getIdentVec ident = do
         "Trying to get identifier " <> show ident <>
         " that should be an array, but it is a " <> valType val'
 
-interpretExprToInt :: Expr -> Interpret Integer
-interpretExprToInt expr = do
+interpretExprToValInt :: Expr -> Interpret ValInt
+interpretExprToValInt expr = do
   val <- interpretExpr expr
   case val of
     ValInt int -> pure int
-    val' -> error $ "Expecting an int, but got a val: " <> show val'
+    val' -> fail $ "Expecting an int, but got a val: " <> show val'
+
+interpretExprToInteger :: Expr -> Interpret Integer
+interpretExprToInteger expr = do
+  val <- interpretExpr expr
+  case val of
+    ValInt (ValIntInteger i) -> pure i
+    ValInt ValIntPositiveInfinity ->
+      fail $ "Expecting an integer, but got infinity"
+    ValInt ValIntNegativeInfinity ->
+      fail $ "Expecting an integer, but got -infinity"
+    val' -> fail $ "Expecting an int, but got a val: " <> show val'
 
 interpretExprToBool :: Expr -> Interpret Bool
 interpretExprToBool expr = do
   val <- interpretExpr expr
   case val of
     ValBool bool' -> pure bool'
-    val' -> error $ "Expecting a bool, but got a val: " <> show val'
+    val' -> fail $ "Expecting a bool, but got a val: " <> show val'

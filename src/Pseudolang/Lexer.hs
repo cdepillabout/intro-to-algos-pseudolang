@@ -32,6 +32,7 @@ data Tok
   | TokIdentifier Text -- ^ Identifier name.
   | TokIf
   | TokIndent Pos -- ^ How many spaces this indent includes.
+  | TokInfinity
   | TokInteger Integer
   | TokLessThan
   | TokMinus
@@ -107,6 +108,7 @@ reservedAlphaWords =
   , ("for", TokFor)
   , ("fun", TokFun)
   , ("if", TokIf)
+  , ("infinity", TokInfinity)
   , ("or", TokOr)
   , ("return", TokReturn)
   , ("to", TokTo)
@@ -150,6 +152,7 @@ reservedSyms =
   , ("]", TokCloseSquareBracket)
   , ("{", TokOpenCurlyBrace)
   , ("}", TokCloseCurlyBrace)
+  , ("∞", TokInfinity)
   ]
 
 reservedSymsParser :: Parser Token

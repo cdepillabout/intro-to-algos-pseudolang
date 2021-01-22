@@ -108,3 +108,9 @@ test =
         , Token {token = TokElseIf, startPos = 3, endPos = 9}
         , Token {token = TokElse, startPos = 10, endPos = 14}
         ]
+    it "test14" $ do
+      parserTest tokenizer "infinity - ∞"
+        [ Token {token = TokInfinity, startPos = 0, endPos = 8}
+        , Token {token = TokMinus, startPos = 9, endPos = 10}
+        , Token {token = TokInfinity, startPos = 11, endPos = 12}
+        ]

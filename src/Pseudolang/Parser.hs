@@ -80,6 +80,7 @@ data Expr
   | ExprDivide Expr Expr
   | ExprFunCall FunCall -- ^ This is like @hello(1, 3)@.
   | ExprGreaterThan Expr Expr
+  | ExprInfinity
   | ExprInteger Integer
   | ExprLessThan Expr Expr
   | ExprMinus Expr Expr
@@ -95,6 +96,7 @@ data Expr
 
 newtype Identifier = Identifier Text
   deriving stock (Eq, Ord, Show)
+  deriving newtype (IsString)
 
 astParser :: Parser AST
 astParser = fmap AST topLevelsParser
@@ -353,12 +355,18 @@ propertyParser = do
   propertyIdent <- identParser
   pure $ Property ident propertyIdent
 
+infinityParser :: Parser Expr
+infinityParser = do
+  tokenParser' TokInfinity
+  pure ExprInfinity
+
 termParser :: Parser Expr
 termParser =
   between (tokenParser' TokOpenParen) (tokenParser' TokCloseParen) exprParser
   <|> arrayLiteralParser
   <|> integerParser
   <|> stringLiteralParser
+  <|> infinityParser
   <|> try (fmap ExprFunCall funCallParser)
   <|> try (fmap ExprArrayIndex arrayIndexParser)
   <|> try (fmap ExprProperty propertyParser)

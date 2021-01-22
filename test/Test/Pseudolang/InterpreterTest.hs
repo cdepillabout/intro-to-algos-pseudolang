@@ -209,8 +209,8 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ (Identifier "a", ValInt 3)
-              , (Identifier "b", ValInt 300)
+              [ ("a", ValInt 3)
+              , ("b", ValInt 300)
               ]
       interpreterTest input expectedMapping
     it "test16" $ do
@@ -232,7 +232,7 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ (Identifier "A", ValVector aVec)
+              [ ("A", ValVector aVec)
               ]
       interpreterTest input expectedMapping
     it "test17" $ do
@@ -246,10 +246,10 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ (Identifier "A", ValVector aVec)
-              , (Identifier "j", ValInt 7)
-              , (Identifier "i", ValInt 5)
-              , (Identifier "key", ValInt 3)
+              [ ("A", ValVector aVec)
+              , ("j", ValInt 7)
+              , ("i", ValInt 5)
+              , ("key", ValInt 3)
               ]
       interpreterTest input expectedMapping
     it "test18" $ do
@@ -267,10 +267,10 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ (Identifier "A", ValVector aVec)
-              , (Identifier "j", ValInt 7)
-              , (Identifier "i", ValInt 2)
-              , (Identifier "key", ValInt 3)
+              [ ("A", ValVector aVec)
+              , ("j", ValInt 7)
+              , ("i", ValInt 2)
+              , ("key", ValInt 3)
               ]
       interpreterTest input expectedMapping
     it "test19" $ do
@@ -280,7 +280,7 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ (Identifier "A", ValString "hello oooo")
+              [ ("A", ValString "hello oooo")
               ]
       interpreterTest input expectedMapping
     it "test20" $ do
@@ -296,9 +296,9 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ (Identifier "x", ValInt 3)
-              , (Identifier "c", ValInt 100)
-              , (Identifier "d", ValInt 20)
+              [ ("x", ValInt 3)
+              , ("c", ValInt 100)
+              , ("d", ValInt 20)
               ]
       interpreterTest input expectedMapping
     it "test21" $ do
@@ -314,8 +314,8 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ (Identifier "x", ValInt 3)
-              , (Identifier "b", ValInt 4)
+              [ ("x", ValInt 3)
+              , ("b", ValInt 4)
               ]
       interpreterTest input expectedMapping
     it "test22" $ do
@@ -331,7 +331,7 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ (Identifier "x", ValInt 3)
-              , (Identifier "ddd", ValInt 2000)
+              [ ("x", ValInt 3)
+              , ("ddd", ValInt 2000)
               ]
       interpreterTest input expectedMapping
