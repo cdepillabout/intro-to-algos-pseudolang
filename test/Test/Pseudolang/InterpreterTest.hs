@@ -335,3 +335,17 @@ test =
               , ("ddd", ValInt 2000)
               ]
       interpreterTest input expectedMapping
+    it "test23" $ do
+      let input =
+            [__i|
+              x = infinity
+              y = -infinity
+              z = infinity + 3
+             |]
+          expectedMapping =
+            mapFromList
+              [ ("x", ValInt ValIntPositiveInfinity)
+              , ("y", ValInt ValIntNegativeInfinity)
+              , ("z", ValInt ValIntPositiveInfinity)
+              ]
+      interpreterTest input expectedMapping

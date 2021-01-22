@@ -63,9 +63,17 @@ data ValInt
 
 eqValInt :: ValInt -> ValInt -> Bool
 eqValInt (ValIntInteger i1) (ValIntInteger i2) = i1 == i2
-eqValInt _ _ =
-  -- Infinity is never equal with anything, even itself
-  False
+eqValInt ValIntPositiveInfinity ValIntPositiveInfinity =
+  -- TODO: Infinity is equal with itself.
+  -- This probably shouldn't be the case(?), but we currently
+  -- make use of this fact in the unit tests.
+  True
+eqValInt ValIntNegativeInfinity ValIntNegativeInfinity =
+  -- TODO: Infinity is equal with itself.
+  -- This probably shouldn't be the case(?), but we currently
+  -- make use of this fact in the unit tests.
+  True
+eqValInt _ _ = False
 
 compareValInt :: ValInt -> ValInt -> Ordering
 compareValInt (ValIntInteger i1) (ValIntInteger i2) = compare i1 i2
