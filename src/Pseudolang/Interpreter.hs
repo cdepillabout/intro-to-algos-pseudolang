@@ -118,6 +118,12 @@ lessThanOrEqualToValInt v1 v2 =
 
 minusValInt :: ValInt -> ValInt -> ValInt
 minusValInt (ValIntInteger i1) (ValIntInteger i2) = ValIntInteger $ i1 - i2
+minusValInt (ValIntInteger _) ValIntNegativeInfinity =
+  -- An integer minus negative infinity is positive infinity.
+  ValIntPositiveInfinity
+minusValInt (ValIntInteger _) ValIntPositiveInfinity =
+  -- An integer minus positive infinity is negative infinity.
+  ValIntNegativeInfinity
 minusValInt ValIntPositiveInfinity _ =
   -- Positive infinity minus anything is still positive infinity.
   ValIntPositiveInfinity
@@ -127,6 +133,12 @@ minusValInt ValIntNegativeInfinity _ =
 
 plusValInt :: ValInt -> ValInt -> ValInt
 plusValInt (ValIntInteger i1) (ValIntInteger i2) = ValIntInteger $ i1 + i2
+plusValInt (ValIntInteger _) ValIntPositiveInfinity =
+  -- An integer plus positive infinity is positive infinity
+  ValIntPositiveInfinity
+plusValInt (ValIntInteger _) ValIntNegativeInfinity =
+  -- An integer plus negative infinity is negative infinity
+  ValIntNegativeInfinity
 plusValInt ValIntPositiveInfinity _ =
   -- Positive infinity plus anything is still positive infinity.
   ValIntPositiveInfinity
@@ -136,6 +148,15 @@ plusValInt ValIntNegativeInfinity _ =
 
 timesValInt :: ValInt -> ValInt -> ValInt
 timesValInt (ValIntInteger i1) (ValIntInteger i2) = ValIntInteger $ i1 * i2
+timesValInt (ValIntInteger _)  ValIntPositiveInfinity =
+  -- Positive infinity times anything is still positive infinity.
+  -- TODO: Should there be some logic here about positive infinity times a
+  -- negative number is negative infinity?
+  ValIntPositiveInfinity
+timesValInt (ValIntInteger _)  ValIntNegativeInfinity =
+  -- Negative infinity times anything is still negative infinity.
+  -- TODO: See above.
+  ValIntNegativeInfinity
 timesValInt ValIntPositiveInfinity _ =
   -- Positive infinity times anything is still positive infinity.
   -- TODO: Should there be some logic here about positive infinity times a
@@ -148,6 +169,15 @@ timesValInt ValIntNegativeInfinity _ =
 
 quotValInt :: ValInt -> ValInt -> ValInt
 quotValInt (ValIntInteger i1) (ValIntInteger i2) = ValIntInteger $ i1 `quot` i2
+quotValInt (ValIntInteger _) ValIntPositiveInfinity =
+  -- Positive infinity div anything is still positive infinity.
+  -- TODO: Should there be some logic here about positive infinity div a
+  -- negative number is negative infinity?
+  ValIntPositiveInfinity
+quotValInt (ValIntInteger _) ValIntNegativeInfinity =
+  -- Negative infinity div anything is still negative infinity.
+  -- TODO: See above.
+  ValIntNegativeInfinity
 quotValInt ValIntPositiveInfinity _ =
   -- Positive infinity div anything is still positive infinity.
   -- TODO: Should there be some logic here about positive infinity div a
@@ -162,7 +192,7 @@ negateValInt :: ValInt -> ValInt
 negateValInt (ValIntInteger i) = ValIntInteger $ negate i
 -- Negating positive and negative infinity flip them around.
 negateValInt ValIntPositiveInfinity = ValIntNegativeInfinity
-negateValInt ValIntPositiveInfinity = ValIntNegativeInfinity
+negateValInt ValIntNegativeInfinity = ValIntPositiveInfinity
 
 absValInt :: ValInt -> ValInt
 absValInt (ValIntInteger i) = ValIntInteger $ abs i
