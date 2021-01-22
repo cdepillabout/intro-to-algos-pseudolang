@@ -78,11 +78,17 @@ eqValInt _ _ = False
 compareValInt :: ValInt -> ValInt -> Ordering
 compareValInt (ValIntInteger i1) (ValIntInteger i2) = compare i1 i2
 compareValInt ValIntNegativeInfinity _ =
-  -- Negative infinity is less than everything, even itself.
+  -- Negative infinity is less than anything, even itself.
   LT
-compareValInt _ ValIntPositiveInfinity =
+compareValInt _ ValIntNegativeInfinity =
+  -- Anything is greater than negative infinity.
+  GT
+compareValInt ValIntPositiveInfinity _ =
   -- Positive infinity is greater than everything, even itself.
   GT
+compareValInt _ ValIntPositiveInfinity =
+  -- Anything is less than positive infinity.
+  LT
 
 greaterThanValInt :: ValInt -> ValInt -> Bool
 greaterThanValInt v1 v2 =
@@ -90,10 +96,24 @@ greaterThanValInt v1 v2 =
     GT -> True
     _ -> False
 
+greaterThanOrEqualToValInt :: ValInt -> ValInt -> Bool
+greaterThanOrEqualToValInt v1 v2 =
+  case compareValInt v1 v2 of
+    GT -> True
+    EQ -> True
+    _ -> False
+
 lessThanValInt :: ValInt -> ValInt -> Bool
 lessThanValInt v1 v2 =
   case compareValInt v1 v2 of
     LT -> True
+    _ -> False
+
+lessThanOrEqualToValInt :: ValInt -> ValInt -> Bool
+lessThanOrEqualToValInt v1 v2 =
+  case compareValInt v1 v2 of
+    LT -> True
+    EQ -> True
     _ -> False
 
 minusValInt :: ValInt -> ValInt -> ValInt
@@ -483,6 +503,10 @@ interpretExpr = \case
     valInt1 <- interpretExprToValInt expr1
     valInt2 <- interpretExprToValInt expr2
     pure $ ValBool $ greaterThanValInt valInt1 valInt2
+  ExprGreaterThanOrEqualTo expr1 expr2 -> do
+    valInt1 <- interpretExprToValInt expr1
+    valInt2 <- interpretExprToValInt expr2
+    pure $ ValBool $ greaterThanOrEqualToValInt valInt1 valInt2
   ExprFunCall funCall -> do
     res <- interpretFunCall funCall
     pure res
@@ -492,6 +516,10 @@ interpretExpr = \case
     valInt1 <- interpretExprToValInt expr1
     valInt2 <- interpretExprToValInt expr2
     pure $ ValBool $ lessThanValInt valInt1 valInt2
+  ExprLessThanOrEqualTo expr1 expr2 -> do
+    valInt1 <- interpretExprToValInt expr1
+    valInt2 <- interpretExprToValInt expr2
+    pure $ ValBool $ lessThanOrEqualToValInt valInt1 valInt2
   ExprMinus expr1 expr2 -> do
     valInt1 <- interpretExprToValInt expr1
     valInt2 <- interpretExprToValInt expr2

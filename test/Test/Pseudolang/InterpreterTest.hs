@@ -361,3 +361,60 @@ test =
               , ("y", ValInt 10)
               ]
       interpreterTest input expectedMapping
+    it "test25" $ do
+      lVec <- thawFromList [ValUnit, ValUnit, ValUnit, ValUnit]
+      let input =
+            [__i|
+              n1 = 4
+              L = new-array(n1)
+             |]
+          expectedMapping =
+            mapFromList
+              [ ("n1", ValInt 4)
+              , ("L", ValVector lVec)
+              ]
+      interpreterTest input expectedMapping
+    it "test26" $ do
+      aVec <- thawFromList [ValInt 1, ValInt 2, ValInt 2, ValInt 3, ValInt 4, ValInt 5, ValInt 6, ValInt 7]
+      lVec <- thawFromList [ValInt 2, ValInt 4, ValInt 5, ValInt 7, ValInt ValIntPositiveInfinity]
+      rVec <- thawFromList [ValInt 1, ValInt 2, ValInt 3, ValInt 6, ValInt ValIntPositiveInfinity]
+      let input =
+            [__i|
+              A = [2,4,5,7,1,2,3,6]
+              p = 1
+              q = 4
+              r = 8
+              n1 = q - p + 1
+              n2 = r - q
+              L = new-array(n1 + 1)
+              R = new-array(n2 + 1)
+              for i = 1 to n1
+                L[i] = A[p + i - 1]
+              for j = 1 to n2
+                R[j] = A[q + j]
+              L[n1 + 1] = infinity
+              R[n2 + 1] = infinity
+              i = 1
+              j = 1
+              for k = p to r
+                if L[i] <= R[j]
+                  A[k] = L[i]
+                  i = i + 1
+                else A[k] = R[j]
+                  j = j + 1
+             |]
+          expectedMapping =
+            mapFromList
+              [ ("A", ValVector aVec)
+              , ("p", ValInt 1)
+              , ("q", ValInt 4)
+              , ("r", ValInt 8)
+              , ("n1", ValInt 4)
+              , ("n2", ValInt 4)
+              , ("L", ValVector lVec)
+              , ("R", ValVector rVec)
+              , ("i", ValInt 5)
+              , ("j", ValInt 5)
+              , ("k", ValInt 9)
+              ]
+      interpreterTest input expectedMapping

@@ -80,9 +80,11 @@ data Expr
   | ExprDivide Expr Expr
   | ExprFunCall FunCall -- ^ This is like @hello(1, 3)@.
   | ExprGreaterThan Expr Expr
+  | ExprGreaterThanOrEqualTo Expr Expr
   | ExprInfinity
   | ExprInteger Integer
   | ExprLessThan Expr Expr
+  | ExprLessThanOrEqualTo Expr Expr
   | ExprMinus Expr Expr
   | ExprNegate Expr
   | ExprOr Expr Expr -- ^ This is like @x or y@.
@@ -112,7 +114,7 @@ topLevelsParser = do
 topLevelParser :: Parser TopLevel
 topLevelParser = do
   fmap TopLevelFunDef funDefParser <|>
-    fmap TopLevelStatement statementParser <?>
+    fmap TopLevelStatement indentedStatementParser <?>
     "top level function or statement"
 
 funDefParser :: Parser FunDef
@@ -143,7 +145,7 @@ statementsParser = do
   eitherStatements <-
     some do
       fmap Left (try $ optional indentParser *> blankLineParser) <|>
-        fmap Right statementParser -- <?> "statement in a list of statements"
+        fmap Right indentedStatementParser -- <?> "statement in a list of statements"
   -- Ignore the blank lines
   pure $ catRights eitherStatements
 
@@ -151,9 +153,13 @@ statementsParser = do
 blankLineParser :: Parser ()
 blankLineParser = newlineParser
 
+indentedStatementParser :: Parser Statement
+indentedStatementParser = do
+  indentParser <?> "indentation beginning a statement"
+  statementParser
+
 statementParser :: Parser Statement
 statementParser = do
-  indentParser <?> "indentation beginning a statement"
   statementForLoopParser <|>
     statementWhileLoopParser <|>
     statementIfParser <|>
@@ -224,6 +230,7 @@ forParser = do
 
 elseIfParser :: Parser ElseIf
 elseIfParser = do
+  indentParser <?> "indentation before an elseif"
   tokenParser' TokElseIf <?> "elseif"
   condition <- exprParser <?> "elseif condition"
   newlineParser <?> "newline after elseif condition line"
@@ -231,9 +238,9 @@ elseIfParser = do
     indented nonEmptyStatementsParser <?> "indented statements in an elseif block"
   pure $ ElseIf condition statements
 
-elseIfElseParser :: Parser ElseIfElse
-elseIfElseParser = do
-  elseIfBlocks <- many elseIfParser
+elseParser :: Parser (NonEmpty Statement)
+elseParser = do
+  indentParser <?> "indentation before an else"
   tokenParser' TokElse
   statementDirectlyAfter <- statementParser <?> "single statement on same line as else"
   maybeStatements <-
@@ -242,6 +249,15 @@ elseIfElseParser = do
         case maybeStatements of
           Nothing -> statementDirectlyAfter :| []
           Just statements -> statementDirectlyAfter :| statements
+  pure elseStatements
+
+elseIfElseParser :: Parser ElseIfElse
+elseIfElseParser = do
+  -- An elseif block is first checked against the correct amount of indentation.
+  -- We need this try here incase the indentation matches, but then we actually
+  -- find an else block.
+  elseIfBlocks <- many $ try elseIfParser
+  elseStatements <- elseParser
   pure $ ElseIfElse elseIfBlocks elseStatements
 
 ifParser :: Parser If
@@ -251,7 +267,7 @@ ifParser = do
   newlineParser <?> "newline after if condition line"
   statements <-
     indented nonEmptyStatementsParser <?> "indented statements in an if-then block"
-  elseIfElse <- optional elseIfElseParser
+  elseIfElse <- try $ optional elseIfElseParser
   pure $ If condition statements elseIfElse
 
 whileParser :: Parser WhileLoop
@@ -384,7 +400,9 @@ exprTable =
     , binary (tokenParser' TokMinus) ExprMinus
     ]
   , [ binary (tokenParser' TokLessThan) ExprLessThan
+    , binary (tokenParser' TokLessThanOrEqualTo) ExprLessThanOrEqualTo
     , binary (tokenParser' TokGreaterThan) ExprGreaterThan
+    , binary (tokenParser' TokGreaterThanOrEqualTo) ExprGreaterThanOrEqualTo
     ]
   , [ binary (tokenParser' TokAnd) ExprAnd
     , binary (tokenParser' TokOr) ExprOr

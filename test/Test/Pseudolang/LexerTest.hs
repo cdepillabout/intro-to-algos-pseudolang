@@ -114,3 +114,8 @@ test =
         , Token {token = TokMinus, startPos = 9, endPos = 10}
         , Token {token = TokInfinity, startPos = 11, endPos = 12}
         ]
+    it "test14" $ do
+      parserTest tokenizer "> >="
+        [ Token {token = TokGreaterThan, startPos = 0, endPos = 1}
+        , Token {token = TokGreaterThanOrEqualTo, startPos = 2, endPos = 4}
+        ]

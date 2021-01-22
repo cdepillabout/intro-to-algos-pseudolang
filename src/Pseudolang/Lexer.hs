@@ -4,7 +4,7 @@ module Pseudolang.Lexer where
 import Pseudolang.Prelude hiding (many, some, try)
 
 import Text.Megaparsec (ParsecT, Pos, SourcePos, choice, eof, getOffset, many, manyTill, mkPos, notFollowedBy, some, try)
-import Text.Megaparsec.Char (alphaNumChar, char, hspace1, letterChar, string)
+import Text.Megaparsec.Char (alphaNumChar, char, hspace1, letterChar, string, symbolChar)
 import qualified Text.Megaparsec.Char.Lexer as Megaparsec.Lexer
 
 type Parser = ParsecT Void Text Identity
@@ -29,12 +29,14 @@ data Tok
   | TokFor
   | TokFun
   | TokGreaterThan
+  | TokGreaterThanOrEqualTo
   | TokIdentifier Text -- ^ Identifier name.
   | TokIf
   | TokIndent Pos -- ^ How many spaces this indent includes.
   | TokInfinity
   | TokInteger Integer
   | TokLessThan
+  | TokLessThanOrEqualTo
   | TokMinus
   | TokNewline
   | TokOpenCurlyBrace
@@ -127,9 +129,7 @@ reservedAlphaWordParser str tok = do
 -- parser without any trouble.
 reservedAlphaWordsParser :: Parser Token
 reservedAlphaWordsParser = do
-  lexemeParser do
-    tok <- choice reservedAlphaWordParsers
-    pure tok
+  lexemeParser $ choice reservedAlphaWordParsers
   where
     reservedAlphaWordParsers :: [Parser Tok]
     reservedAlphaWordParsers =
@@ -146,8 +146,10 @@ reservedSyms =
   , (".", TokPeriod)
   , ("/", TokDivide)
   , ("<", TokLessThan)
+  , ("<=", TokLessThanOrEqualTo)
   , ("=", TokEquals)
   , (">", TokGreaterThan)
+  , (">=", TokGreaterThanOrEqualTo)
   , ("[", TokOpenSquareBracket)
   , ("]", TokCloseSquareBracket)
   , ("{", TokOpenCurlyBrace)
@@ -155,12 +157,23 @@ reservedSyms =
   , ("∞", TokInfinity)
   ]
 
+reservedSymParser :: Text -> Tok -> Parser Tok
+reservedSymParser str tok = do
+  void $ string str
+  notFollowedBy symbolChar
+  pure tok
+
+-- | Parse a reserved symbol (like @>=@ or @]@).
+--
+-- Backtracks on failure.  This can be used immediately before the identifier
+-- parser without any trouble.
 reservedSymsParser :: Parser Token
 reservedSymsParser = do
-  let reservedSymParsers :: [Parser Tok]
-      reservedSymParsers =
-        fmap (\(str, tok) -> string str $> tok) reservedSyms
   lexemeParser $ choice reservedSymParsers
+  where
+    reservedSymParsers :: [Parser Tok]
+    reservedSymParsers =
+        fmap (\(str, tok) -> try $ reservedSymParser str tok) reservedSyms
 
 identifierParser :: Parser Token
 identifierParser = do
