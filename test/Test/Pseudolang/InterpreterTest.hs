@@ -349,3 +349,15 @@ test =
               , ("z", ValInt ValIntPositiveInfinity)
               ]
       interpreterTest input expectedMapping
+    it "test24" $ do
+      let input =
+            [__i|
+              x = floor(3)
+              y = ceiling(10)
+             |]
+          expectedMapping =
+            mapFromList
+              [ ("x", ValInt 3)
+              , ("y", ValInt 10)
+              ]
+      interpreterTest input expectedMapping

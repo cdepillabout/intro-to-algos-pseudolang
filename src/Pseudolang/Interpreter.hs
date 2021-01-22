@@ -153,6 +153,12 @@ signumValInt (ValIntInteger i) = ValIntInteger $ signum i
 signumValInt ValIntPositiveInfinity = ValIntInteger 1
 signumValInt ValIntNegativeInfinity = ValIntInteger (-1)
 
+floorValInt :: ValInt -> ValInt
+floorValInt = id
+
+ceilingValInt :: ValInt -> ValInt
+ceilingValInt = id
+
 instance Num ValInt where
   (+) = plusValInt
   (-) = minusValInt
@@ -279,10 +285,31 @@ interpretBuiltinPrint (v:vals) = do
   putStr $ tshow v <> " "
   interpretBuiltinPrint vals
 
+interpretBuiltinFloor :: [Val] -> Interpret Val
+interpretBuiltinFloor valArgs = do
+  val <- assertOneFunArg "floor" valArgs
+  valInt <- assertValIsValInt val
+  pure $ ValInt $ floorValInt valInt
+
+interpretBuiltinCeiling :: [Val] -> Interpret Val
+interpretBuiltinCeiling valArgs = do
+  val <- assertOneFunArg "ceiling" valArgs
+  valInt <- assertValIsValInt val
+  pure $ ValInt $ ceilingValInt valInt
+
+assertOneFunArg :: String -> [a] -> Interpret a
+assertOneFunArg _ [arg] = pure arg
+assertOneFunArg funName args =
+  fail $
+    funName <> "() function called with " <> show (length args) <>
+    " args, but it should have one arg."
+
 interpretBuiltinFunCall :: Identifier -> [Expr] -> Interpret (Maybe Val)
 interpretBuiltinFunCall (Identifier builtinFunName) funCallArgs = do
   funCallVals <- traverse interpretExpr funCallArgs
   case builtinFunName of
+    "ceiling" -> fmap Just $ interpretBuiltinCeiling funCallVals
+    "floor" -> fmap Just $ interpretBuiltinFloor funCallVals
     "print" -> fmap Just $ interpretBuiltinPrint funCallVals
     _ -> pure Nothing
 
@@ -517,12 +544,14 @@ getIdentVec ident = do
         "Trying to get identifier " <> show ident <>
         " that should be an array, but it is a " <> valType val'
 
+assertValIsValInt :: Val -> Interpret ValInt
+assertValIsValInt (ValInt valInt) = pure valInt
+assertValIsValInt val = fail $ "Expecting an int, but got a val: " <> show val
+
 interpretExprToValInt :: Expr -> Interpret ValInt
 interpretExprToValInt expr = do
   val <- interpretExpr expr
-  case val of
-    ValInt int -> pure int
-    val' -> fail $ "Expecting an int, but got a val: " <> show val'
+  assertValIsValInt val
 
 interpretExprToInteger :: Expr -> Interpret Integer
 interpretExprToInteger expr = do
