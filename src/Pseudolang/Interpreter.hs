@@ -297,6 +297,13 @@ interpretBuiltinCeiling valArgs = do
   valInt <- assertValIsValInt val
   pure $ ValInt $ ceilingValInt valInt
 
+interpretBuiltinNewArray :: [Val] -> Interpret Val
+interpretBuiltinNewArray valArgs = do
+  val <- assertOneFunArg "new-array" valArgs
+  int <- assertValIsInteger val
+  vec <- Vec.thaw (Vec.replicate (fromIntegral int) ValUnit)
+  pure $ ValVector vec
+
 assertOneFunArg :: String -> [a] -> Interpret a
 assertOneFunArg _ [arg] = pure arg
 assertOneFunArg funName args =
@@ -310,6 +317,7 @@ interpretBuiltinFunCall (Identifier builtinFunName) funCallArgs = do
   case builtinFunName of
     "ceiling" -> fmap Just $ interpretBuiltinCeiling funCallVals
     "floor" -> fmap Just $ interpretBuiltinFloor funCallVals
+    "new-array" -> fmap Just $ interpretBuiltinNewArray funCallVals
     "print" -> fmap Just $ interpretBuiltinPrint funCallVals
     _ -> pure Nothing
 
@@ -548,6 +556,16 @@ assertValIsValInt :: Val -> Interpret ValInt
 assertValIsValInt (ValInt valInt) = pure valInt
 assertValIsValInt val = fail $ "Expecting an int, but got a val: " <> show val
 
+assertValIsInteger :: Val -> Interpret Integer
+assertValIsInteger val = do
+  valInt <- assertValIsValInt val
+  case valInt of
+    ValIntInteger i -> pure i
+    ValIntPositiveInfinity ->
+      fail $ "Expecting an integer, but got infinity"
+    ValIntNegativeInfinity ->
+      fail $ "Expecting an integer, but got -infinity"
+
 interpretExprToValInt :: Expr -> Interpret ValInt
 interpretExprToValInt expr = do
   val <- interpretExpr expr
@@ -556,13 +574,7 @@ interpretExprToValInt expr = do
 interpretExprToInteger :: Expr -> Interpret Integer
 interpretExprToInteger expr = do
   val <- interpretExpr expr
-  case val of
-    ValInt (ValIntInteger i) -> pure i
-    ValInt ValIntPositiveInfinity ->
-      fail $ "Expecting an integer, but got infinity"
-    ValInt ValIntNegativeInfinity ->
-      fail $ "Expecting an integer, but got -infinity"
-    val' -> fail $ "Expecting an int, but got a val: " <> show val'
+  assertValIsInteger val
 
 interpretExprToBool :: Expr -> Interpret Bool
 interpretExprToBool expr = do
