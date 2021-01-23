@@ -61,20 +61,65 @@ data ValInt
   | ValIntPositiveInfinity
   | ValIntNegativeInfinity
 
+-- | Integers are equal with themselves
+--
+-- >>> eqValInt 3 3
+-- True
+-- >>> eqValInt 3 4
+-- False
+--
+-- Positive infinity and negative infinity are equal with themselves
+--
+-- >>> eqValInt ValIntPositiveInfinity ValIntPositiveInfinity
+-- True
+-- >>> eqValInt ValIntNegativeInfinity ValIntNegativeInfinity
+-- True
+--
+-- Nothing else is equal.
+--
+-- >>> eqValInt 3 ValIntPositiveInfinity
+-- False
+-- >>> eqValInt ValIntNegativeInfinity 100
+-- False
+--
+-- TODO: I don't know if it makes sense for positive and negative infinity to
+-- be equal, but it makes writing unit tests easier.
 eqValInt :: ValInt -> ValInt -> Bool
 eqValInt (ValIntInteger i1) (ValIntInteger i2) = i1 == i2
-eqValInt ValIntPositiveInfinity ValIntPositiveInfinity =
-  -- TODO: Infinity is equal with itself.
-  -- This probably shouldn't be the case(?), but we currently
-  -- make use of this fact in the unit tests.
-  True
-eqValInt ValIntNegativeInfinity ValIntNegativeInfinity =
-  -- TODO: Infinity is equal with itself.
-  -- This probably shouldn't be the case(?), but we currently
-  -- make use of this fact in the unit tests.
-  True
+eqValInt ValIntPositiveInfinity ValIntPositiveInfinity = True
+eqValInt ValIntNegativeInfinity ValIntNegativeInfinity = True
 eqValInt _ _ = False
 
+-- | 'compare' for 'ValInt'.
+--
+-- Integeres are compared normally:
+--
+-- >>> compareValInt 3 4
+-- LT
+-- >>> compareValInt 10 10
+-- EQ
+--
+-- When 'ValIntNegativeInfinity' comes first, it is always 'LT', even for itself.
+--
+-- >>> compareValInt ValIntNegativeInfinity 10
+-- LT
+-- >>> compareValInt ValIntNegativeInfinity ValIntNegativeInfinity
+-- LT
+--
+-- Otherwise, when 'ValIntNegativeInfinity' comes second, it is always 'GT':
+--
+-- >>> compareValInt 10 ValIntNegativeInfinity
+-- GT
+--
+-- 'ValIntPositiveInfinity' is the opposite.  When it comes first, it is always
+-- 'GT', even for itself..  When it comes second, it is always LT:
+--
+-- >>> compareValInt ValIntPositiveInfinity 10
+-- GT
+-- >>> compareValInt ValIntPositiveInfinity ValIntPositiveInfinity
+-- GT
+-- >>> compareValInt 3 ValIntPositiveInfinity
+-- LT
 compareValInt :: ValInt -> ValInt -> Ordering
 compareValInt (ValIntInteger i1) (ValIntInteger i2) = compare i1 i2
 compareValInt ValIntNegativeInfinity _ =
