@@ -73,8 +73,3 @@ test =
   describe "Golden Tests" $ do
     exampleTrees <- runIO buildExampleTree
     traverse_ exampleTreeToSpec exampleTrees
-    -- it "lalal" $ do
-    --   cwd <- getCurrentDirectory
-    --   pPrint cwd
-    --   et <- buildExampleTree
-    --   pPrint et
