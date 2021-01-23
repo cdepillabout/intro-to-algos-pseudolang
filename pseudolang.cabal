@@ -112,6 +112,7 @@ test-suite pseudolang-test
   main-is: Spec.hs
   other-modules:
     Paths_pseudolang
+    Test.Pseudolang.Golden
     Test.Pseudolang.InterpreterTest
     Test.Pseudolang.LexerTest
     Test.Pseudolang.ParserTest
