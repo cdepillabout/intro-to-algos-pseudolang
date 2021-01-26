@@ -6,7 +6,7 @@ import Pseudolang.Prelude
 
 import Options.Applicative (Parser, ParserInfo, argument, execParser, fullDesc, header, help, helper, info, metavar, progDesc, str)
 
-import Pseudolang.Interpreter (parseAndInterpret)
+import Pseudolang.Interpreter.Real (parseAndInterpret)
 
 data CmdOpts = CmdOpts
   { file :: FilePath

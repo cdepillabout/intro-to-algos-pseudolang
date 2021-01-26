@@ -4,7 +4,9 @@ module Pseudolang.Prelude
   ) where
 
 import ClassyPrelude as X
-import Control.Monad.State as X (MonadState, StateT(StateT, runStateT))
+import Control.Monad.Except as X (MonadError, ExceptT, catchError, runExceptT, throwError)
+import Control.Monad.Fail as X (MonadFail, fail)
+import Control.Monad.State as X (MonadState, StateT(StateT, runStateT), execStateT, get, gets, modify, put)
 import Data.List.NonEmpty as X (NonEmpty)
 import Data.Void as X (Void)
 import Text.Pretty.Simple as X (pPrint)

@@ -1,40 +1,16 @@
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE UnboxedTuples #-}
-
 module Pseudolang.Interpreter where
 
 import Pseudolang.Prelude
 
-import Control.Monad.Except (ExceptT, MonadError, catchError, runExceptT, throwError)
-import Control.Monad.Fail (MonadFail, fail)
-import Control.Monad.State (execStateT, get, gets, modify, put)
 import Data.Map.Strict (Map)
 import qualified Data.Vector as Vec
 import Data.Vector.Mutable (IOVector)
 import qualified Data.Vector.Mutable as MVec
 import System.IO.Unsafe (unsafePerformIO)
 import Text.Megaparsec (eof, errorBundlePretty, parse)
-import Text.Pretty.Simple (pShow)
 
 import Pseudolang.Parser
 import qualified Pseudolang.Lexer as Lexer
-
-newtype Interpret a =
-  Interpret { unInterpret :: ExceptT Val (StateT InterpState IO) a }
-  deriving newtype
-    ( Functor
-    , Applicative
-    , Monad
-    , MonadError Val
-    , MonadFail
-    , MonadInterpret
-    , MonadState InterpState
-    , PrimMonad
-    )
-
-runInterpret :: Interpret a -> InterpState -> IO (Either Val a, InterpState)
-runInterpret (Interpret m) initInterpState =
-  runStateT (runExceptT m) initInterpState
 
 data InterpState = InterpState
   { interpStateVars :: Map Identifier Val
@@ -47,10 +23,6 @@ class MonadPrint m where
 
 printTextLn :: MonadPrint m => Text -> m ()
 printTextLn t = printText $ t <> "\n"
-
-instance MonadPrint Interpret where
-  printText :: Text -> Interpret ()
-  printText txt = Interpret $ liftIO $ putStr txt
 
 class
   ( MonadState InterpState m
@@ -354,43 +326,6 @@ valType ValInt{} = "int"
 valType ValString{} = "string"
 valType ValUnit{} = "unit"
 valType ValVector{} = "array"
-
-parseAndInterpretToInterpStateWithInitial ::
-     Text -> InterpState -> IO InterpState
-parseAndInterpretToInterpStateWithInitial inputText initInterpState = do
-  let lexerOutput = parse Lexer.tokenizer "" inputText
-  case lexerOutput of
-    Left err -> do
-      fail $ errorBundlePretty err
-    Right tokens -> do
-      let initialIndentAmount = 0
-          parser = runReaderT astParser initialIndentAmount
-          eitherAST = parse (parser <* eof) "" tokens
-      case eitherAST of
-        Right ast -> interpretToInterpStateWithInitial ast initInterpState
-        Left err -> fail $ "Error in parsing: " <> (unpack $ pShow err)
-
-parseAndInterpretToInterpState :: Text -> IO InterpState
-parseAndInterpretToInterpState text =
-  parseAndInterpretToInterpStateWithInitial text initialInterpState
-
-parseAndInterpret :: Text -> IO ()
-parseAndInterpret text = void $ parseAndInterpretToInterpState text
-
-interpretToInterpState :: AST -> IO InterpState
-interpretToInterpState ast = interpretToInterpStateWithInitial ast initialInterpState
-
--- interpretToInterpStateWithInitial :: AST -> InterpState -> IO InterpState
--- interpretToInterpStateWithInitial ast initInterpState = do
---   execStateT (runExceptT $ interpretAST ast) initInterpState
-
-interpretToInterpStateWithInitial :: AST -> InterpState -> IO InterpState
-interpretToInterpStateWithInitial ast initInterpState = do
-  (_, resInterpState) <- runInterpret (interpretAST ast) initInterpState
-  pure resInterpState
-
-interpret :: AST -> IO ()
-interpret ast = void $ interpretToInterpState ast
 
 interpretAST :: MonadInterpret m => AST -> m ()
 interpretAST (AST topLevels) = for_ topLevels interpretTopLevel

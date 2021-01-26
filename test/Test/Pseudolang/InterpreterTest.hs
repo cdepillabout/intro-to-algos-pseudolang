@@ -11,6 +11,7 @@ import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 import Text.Megaparsec (eof, errorBundlePretty, mkPos, parse)
 
 import Pseudolang.Interpreter
+import Pseudolang.Interpreter.Real (parseAndInterpretToInterpState)
 import Pseudolang.Parser (Identifier(..))
 
 thawFromList :: MonadIO m => [Val] -> m (IOVector Val)
