@@ -1,9 +1,12 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UnboxedTuples #-}
+
 module Pseudolang.Interpreter where
 
 import Pseudolang.Prelude
 
-import Control.Monad.Except (ExceptT, catchError, runExceptT, throwError)
-import Control.Monad.Fail (fail)
+import Control.Monad.Except (ExceptT, MonadError, catchError, runExceptT, throwError)
+import Control.Monad.Fail (MonadFail, fail)
 import Control.Monad.State (execStateT, get, gets, modify, put)
 import Data.Map.Strict (Map)
 import qualified Data.Vector as Vec
@@ -16,13 +19,52 @@ import Text.Pretty.Simple (pShow)
 import Pseudolang.Parser
 import qualified Pseudolang.Lexer as Lexer
 
-type Interpret = ExceptT Val (StateT InterpState IO)
+newtype Interpret a =
+  Interpret { unInterpret :: ExceptT Val (StateT InterpState IO) a }
+  deriving newtype
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadError Val
+    , MonadFail
+    , MonadInterpret
+    , MonadState InterpState
+    , PrimMonad
+    )
+
+runInterpret :: Interpret a -> InterpState -> IO (Either Val a, InterpState)
+runInterpret (Interpret m) initInterpState =
+  runStateT (runExceptT m) initInterpState
 
 data InterpState = InterpState
   { interpStateVars :: Map Identifier Val
   , interpStateFuns :: Map Identifier FunDef
   }
   -- deriving stock (Eq, Ord, Show)
+
+class MonadPrint m where
+  printText :: Text -> m ()
+
+printTextLn :: MonadPrint m => Text -> m ()
+printTextLn t = printText $ t <> "\n"
+
+instance MonadPrint Interpret where
+  printText :: Text -> Interpret ()
+  printText txt = Interpret $ liftIO $ putStr txt
+
+class
+  ( MonadState InterpState m
+  , MonadError Val m
+    -- ^ Used for @return@ statements that have to "throw" a value as the result of
+    -- a function call.
+  , MonadPrint m
+    -- ^ Used for printing to the console (or not to the console and
+    -- just holding all the output in a writer monad).
+  , PrimMonad m, PrimState m ~ RealWorld
+    -- ^ Used for the Data.Vector.thaw operation for creating mutatable vectors.
+  , MonadFail m
+    -- ^ Used for error messages when the user does something bad.
+  ) => MonadInterpret m
 
 initialInterpState :: InterpState
 initialInterpState = InterpState mempty mempty
@@ -338,29 +380,34 @@ parseAndInterpret text = void $ parseAndInterpretToInterpState text
 interpretToInterpState :: AST -> IO InterpState
 interpretToInterpState ast = interpretToInterpStateWithInitial ast initialInterpState
 
+-- interpretToInterpStateWithInitial :: AST -> InterpState -> IO InterpState
+-- interpretToInterpStateWithInitial ast initInterpState = do
+--   execStateT (runExceptT $ interpretAST ast) initInterpState
+
 interpretToInterpStateWithInitial :: AST -> InterpState -> IO InterpState
 interpretToInterpStateWithInitial ast initInterpState = do
-  execStateT (runExceptT $ interpretAST ast) initInterpState
+  (_, resInterpState) <- runInterpret (interpretAST ast) initInterpState
+  pure resInterpState
 
 interpret :: AST -> IO ()
 interpret ast = void $ interpretToInterpState ast
 
-interpretAST :: AST -> Interpret ()
+interpretAST :: MonadInterpret m => AST -> m ()
 interpretAST (AST topLevels) = for_ topLevels interpretTopLevel
 
-interpretTopLevel :: TopLevel -> Interpret ()
+interpretTopLevel :: MonadInterpret m => TopLevel -> m ()
 interpretTopLevel = \case
   TopLevelFunDef funDef -> interpretFunDef funDef
   TopLevelStatement statement -> interpretStatement statement
 
-interpretStatements :: [Statement] -> Interpret ()
+interpretStatements :: MonadInterpret m => [Statement] -> m ()
 interpretStatements statements = for_ statements interpretStatement
 
-interpretFunDef :: FunDef -> Interpret ()
+interpretFunDef :: MonadInterpret m => FunDef -> m ()
 interpretFunDef funDef@(FunDef funName _ _) =
   addFunDef funName funDef
 
-interpretStatement :: Statement -> Interpret ()
+interpretStatement :: MonadInterpret m => Statement -> m ()
 interpretStatement = \case
   StatementAssignment assignment -> interpretAssignment assignment
   StatementExpr expr -> void $ interpretExpr expr
@@ -372,41 +419,41 @@ interpretStatement = \case
     throwError val
   StatementWhileLoop whileLoop -> interpretWhileLoop whileLoop
 
-interpretBuiltinPrint :: [Val] -> Interpret Val
+interpretBuiltinPrint :: MonadInterpret m => [Val] -> m Val
 interpretBuiltinPrint [] = do
-  putStrLn ""
+  printTextLn ""
   pure ValUnit
 interpretBuiltinPrint (v:vals) = do
-  putStr $ tshow v <> " "
+  printText $ tshow v <> " "
   interpretBuiltinPrint vals
 
-interpretBuiltinFloor :: [Val] -> Interpret Val
+interpretBuiltinFloor :: MonadInterpret m => [Val] -> m Val
 interpretBuiltinFloor valArgs = do
   val <- assertOneFunArg "floor" valArgs
   valInt <- assertValIsValInt val
   pure $ ValInt $ floorValInt valInt
 
-interpretBuiltinCeiling :: [Val] -> Interpret Val
+interpretBuiltinCeiling :: MonadInterpret m => [Val] -> m Val
 interpretBuiltinCeiling valArgs = do
   val <- assertOneFunArg "ceiling" valArgs
   valInt <- assertValIsValInt val
   pure $ ValInt $ ceilingValInt valInt
 
-interpretBuiltinNewArray :: [Val] -> Interpret Val
+interpretBuiltinNewArray :: MonadInterpret m => [Val] -> m Val
 interpretBuiltinNewArray valArgs = do
   val <- assertOneFunArg "new-array" valArgs
   int <- assertValIsInteger val
   vec <- Vec.thaw (Vec.replicate (fromIntegral int) ValUnit)
   pure $ ValVector vec
 
-assertOneFunArg :: String -> [a] -> Interpret a
+assertOneFunArg :: MonadInterpret m => String -> [a] -> m a
 assertOneFunArg _ [arg] = pure arg
 assertOneFunArg funName args =
   fail $
     funName <> "() function called with " <> show (length args) <>
     " args, but it should have one arg."
 
-interpretBuiltinFunCall :: Identifier -> [Expr] -> Interpret (Maybe Val)
+interpretBuiltinFunCall :: MonadInterpret m => Identifier -> [Expr] -> m (Maybe Val)
 interpretBuiltinFunCall (Identifier builtinFunName) funCallArgs = do
   funCallVals <- traverse interpretExpr funCallArgs
   case builtinFunName of
@@ -416,7 +463,7 @@ interpretBuiltinFunCall (Identifier builtinFunName) funCallArgs = do
     "print" -> fmap Just $ interpretBuiltinPrint funCallVals
     _ -> pure Nothing
 
-interpretFunCall :: FunCall -> Interpret Val
+interpretFunCall :: MonadInterpret m => FunCall -> m Val
 interpretFunCall (FunCall funName funCallArgs) = do
   maybeFunName <- getFunDef funName
   case maybeFunName of
@@ -450,7 +497,7 @@ interpretFunCall (FunCall funName funCallArgs) = do
           put currInterpState
           pure returnVal
 
-interpretElseIfElse :: ElseIfElse -> Interpret ()
+interpretElseIfElse :: MonadInterpret m => ElseIfElse -> m ()
 interpretElseIfElse (ElseIfElse elseIfs elseStatements) =
   case elseIfs of
     (ElseIf condition elseIfStatements : moreElseIfs) -> do
@@ -462,7 +509,7 @@ interpretElseIfElse (ElseIfElse elseIfs elseStatements) =
       -- No elseif conditions, so we just execute the else statements
       interpretStatements (toList elseStatements)
 
-interpretIf :: If -> Interpret ()
+interpretIf :: MonadInterpret m => If -> m ()
 interpretIf (If conditionExpr thenStatements maybeElseIfElseBlocks) = do
   conditionVal <- interpretExprToBool conditionExpr
   if conditionVal
@@ -472,21 +519,21 @@ interpretIf (If conditionExpr thenStatements maybeElseIfElseBlocks) = do
         Nothing -> pure ()
         Just elseIfElseBlocks -> interpretElseIfElse elseIfElseBlocks
 
-interpretAssignment :: Assignment -> Interpret ()
+interpretAssignment :: MonadInterpret m => Assignment -> m ()
 interpretAssignment (Assignment assignmentLHS expr) = do
   val <- interpretExpr expr
   interpretAssignmentLHS assignmentLHS val
   -- setVar identifier val
 
-interpretAssignmentLHS :: AssignmentLHS -> Val -> Interpret ()
+interpretAssignmentLHS :: MonadInterpret m => AssignmentLHS -> Val -> m ()
 interpretAssignmentLHS (AssignmentLHSIdentifier ident) val = do
   setVar ident val
 interpretAssignmentLHS (AssignmentLHSArrayIndex (ArrayIndex arrayIdent expr)) val = do
   idx <- interpretExprToInteger expr
   v <- getIdentVec arrayIdent
-  liftIO $ MVec.write v (fromIntegral idx - 1) val
+  MVec.write v (fromIntegral idx - 1) val
 
-interpretForLoop :: ForLoop -> Interpret ()
+interpretForLoop :: forall m. MonadInterpret m => ForLoop -> m ()
 interpretForLoop (ForLoop (Assignment AssignmentLHSArrayIndex{} _) _ _ _) = do
   fail $
     "In for loop, loop variable is an indexed array, but this is not allowed."
@@ -507,7 +554,7 @@ interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident)
           ForDirectionDownTo -> i - 1
           ForDirectionTo -> i + 1
 
-    loop :: [Statement] -> Interpret ()
+    loop :: [Statement] -> m ()
     loop [] = do
       -- If there are no more statements left to interpret in the loop body,
       -- then we either increment or decrement the loop identifier, and then loop again.
@@ -518,7 +565,7 @@ interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident)
       interpretStatement thisStatement
       loop remainingStatements
 
-    loopWhileNotGoal :: Interpret ()
+    loopWhileNotGoal :: m ()
     loopWhileNotGoal = do
       i <- getLoopIdentVal
       goal <- interpretExprToValInt goalExpr
@@ -526,7 +573,7 @@ interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident)
         then pure ()
         else loop bodyStatements
 
-    getLoopIdentVal :: Interpret ValInt
+    getLoopIdentVal :: m ValInt
     getLoopIdentVal = do
       maybeIdentVal <- getVar ident
       case maybeIdentVal of
@@ -543,7 +590,7 @@ interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident)
             "The identifier (" <> show ident <>
             ") in a for loop is a " <> show (valType val) <> " and not an integer."
 
-interpretWhileLoop :: WhileLoop -> Interpret ()
+interpretWhileLoop :: MonadInterpret m => WhileLoop -> m ()
 interpretWhileLoop whileLoop@(WhileLoop conditionExpr bodyStatements) = do
   conditionVal <- interpretExprToBool conditionExpr
   if conditionVal
@@ -552,7 +599,7 @@ interpretWhileLoop whileLoop@(WhileLoop conditionExpr bodyStatements) = do
       interpretWhileLoop whileLoop
     else pure ()
 
-interpretExpr :: Expr -> Interpret Val
+interpretExpr :: MonadInterpret m => Expr -> m Val
 interpretExpr = \case
   ExprAnd expr1 expr2 -> do
     -- We need to evaluate the second expression lazily.
@@ -565,7 +612,7 @@ interpretExpr = \case
   ExprArrayIndex (ArrayIndex arrIdent idxExpr) -> do
     idx <- interpretExprToInteger idxExpr
     vec <- getIdentVec arrIdent
-    liftIO $ MVec.read vec (fromIntegral idx - 1)
+    MVec.read vec (fromIntegral idx - 1)
   ExprArrayLit exprs -> do
     vals <- traverse interpretExpr exprs
     vec <- Vec.thaw (Vec.fromList vals)
@@ -627,7 +674,7 @@ interpretExpr = \case
 -- | Interpret a property access like @A.length@.
 --
 -- There are only a few available properties.
-interpretProperty :: Property -> Interpret Val
+interpretProperty :: MonadInterpret m => Property -> m Val
 interpretProperty (Property ident propIdent) =
   case propIdent of
     (Identifier "length") -> do
@@ -638,14 +685,14 @@ interpretProperty (Property ident propIdent) =
     (Identifier x) ->
       fail $ "Trying to access property " <> unpack x <> ", but unknown property."
 
-getIdentVal :: Identifier -> Interpret Val
+getIdentVal :: MonadInterpret m => Identifier -> m Val
 getIdentVal ident = do
   maybeVal <- getVar ident
   case maybeVal of
     Nothing -> fail $ "No value for identifier: " <> show ident
     Just val -> pure val
 
-getIdentVec :: Identifier -> Interpret (IOVector Val)
+getIdentVec :: MonadInterpret m => Identifier -> m (IOVector Val)
 getIdentVec ident = do
   val <- getIdentVal ident
   case val of
@@ -655,11 +702,11 @@ getIdentVec ident = do
         "Trying to get identifier " <> show ident <>
         " that should be an array, but it is a " <> valType val'
 
-assertValIsValInt :: Val -> Interpret ValInt
+assertValIsValInt :: MonadInterpret m => Val -> m ValInt
 assertValIsValInt (ValInt valInt) = pure valInt
 assertValIsValInt val = fail $ "Expecting an int, but got a val: " <> show val
 
-assertValIsInteger :: Val -> Interpret Integer
+assertValIsInteger :: MonadInterpret m => Val -> m Integer
 assertValIsInteger val = do
   valInt <- assertValIsValInt val
   case valInt of
@@ -669,17 +716,17 @@ assertValIsInteger val = do
     ValIntNegativeInfinity ->
       fail $ "Expecting an integer, but got -infinity"
 
-interpretExprToValInt :: Expr -> Interpret ValInt
+interpretExprToValInt :: MonadInterpret m => Expr -> m ValInt
 interpretExprToValInt expr = do
   val <- interpretExpr expr
   assertValIsValInt val
 
-interpretExprToInteger :: Expr -> Interpret Integer
+interpretExprToInteger :: MonadInterpret m => Expr -> m Integer
 interpretExprToInteger expr = do
   val <- interpretExpr expr
   assertValIsInteger val
 
-interpretExprToBool :: Expr -> Interpret Bool
+interpretExprToBool :: MonadInterpret m => Expr -> m Bool
 interpretExprToBool expr = do
   val <- interpretExpr expr
   case val of
