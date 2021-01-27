@@ -18,21 +18,21 @@ import Language.Haskell.TH.Quote (QuasiQuoter(..))
 
 _i :: QuasiQuoter
 _i = QuasiQuoter
-  { quoteExp  = toExp . parseInterpSegments . dosToUnix
+  { quoteExp  = toExp' . parseInterpSegments . dosToUnix
   , quotePat  = const $ errQQType "__i" "pattern"
   , quoteType = const $ errQQType "__i" "type"
   , quoteDec  = const $ errQQType "__i" "declaration"
   }
-  where toExp :: Either String [InterpSegment] -> Q Exp
-        toExp parseResult = case parseResult of
+  where toExp' :: Either String [InterpSegment] -> Q Exp
+        toExp' parseResult = case parseResult of
           Left msg   -> errQQ "__i" msg
           Right segs -> unindent segs >>= interpToExp
 
         unindent :: [InterpSegment] -> Q [InterpSegment]
         unindent segs =
-          let lines = interpLines segs
-              mindent = mindentation lines
-          in pure $! (interpUnlines . reduceIndents mindent) lines
+          let lines' = interpLines segs
+              mindent = mindentation lines'
+          in pure $! (interpUnlines . reduceIndents mindent) lines'
 
 interpLines :: [InterpSegment] -> [[InterpSegment]]
 interpLines = split $ dropDelims $ whenElt (== Newline)
@@ -46,8 +46,8 @@ interpToExp = outputToExp . collapseStrings . renderOutput
 data Mindent = UsesSpaces Int | UsesTabs Int
 
 mindentation :: [[InterpSegment]] -> Mindent
-mindentation lines =
-  let nonblank = filter (not . blankLine) lines
+mindentation lines' =
+  let nonblank = filter (not . blankLine) lines'
       withIndent = find (\case { Spaces _ : _ -> True; Tabs _ : _ -> True; _ -> False }) nonblank
   in case withIndent of
       Nothing -> UsesSpaces 0

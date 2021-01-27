@@ -6,6 +6,8 @@ import System.Directory (listDirectory)
 import System.FilePath (addExtension, isExtensionOf, takeFileName)
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 
+import Pseudolang.Interpreter.Test (InterpResult(InterpResult), parseAndInterpretToResult)
+
 data ExampleFile = ExampleFile
   { exampleFileRelPath :: FilePath
   , exampleFileContents :: ByteString
@@ -53,13 +55,18 @@ buildExampleTree = do
   exampleTrees <- traverse buildExampleTree' filesOrDirs
   pure $ catMaybes exampleTrees
 
+outputTest :: Text -> Text -> IO ()
+outputTest inputProgram expectedOutput = do
+  InterpResult _ resOutput <- parseAndInterpretToResult inputProgram
+  resOutput `shouldBe` expectedOutput
+
 exampleTreeToSpec :: ExampleTree -> Spec
 exampleTreeToSpec (Directory fp childTrees) = do
   describe (takeFileName fp) $ do
     traverse_ exampleTreeToSpec childTrees
-exampleTreeToSpec (Example (ExampleFile relPath contents expected)) = do
+exampleTreeToSpec (Example (ExampleFile relPath contents expectedOutput)) = do
   it (takeFileName relPath) $ do
-    1 `shouldBe` 1
+    outputTest (decodeUtf8 contents) (decodeUtf8 expectedOutput)
 
 test :: Spec
 test =
