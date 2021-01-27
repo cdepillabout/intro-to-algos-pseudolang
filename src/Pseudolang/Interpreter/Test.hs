@@ -72,21 +72,6 @@ parseAndInterpretToResult :: Text -> IO InterpResult
 parseAndInterpretToResult text =
   parseAndInterpretToResultWithInitial text initialInterpState
 
--- parseAndInterpret :: Text -> IO ()
--- parseAndInterpret text = void $ parseAndInterpretToInterpState text
-
--- interpretToInterpState :: AST -> IO InterpState
--- interpretToInterpState ast = interpretToInterpStateWithInitial ast initialInterpState
-
--- interpretToInterpStateWithInitial :: AST -> InterpState -> IO InterpState
--- interpretToInterpStateWithInitial ast initInterpState = do
---   (_, resInterpState) <- runInterpret (interpretAST ast) initInterpState
---   pure resInterpState
-
 interpretToResultWithInitial :: AST -> InterpState -> IO InterpResult
 interpretToResultWithInitial ast initInterpState = do
   execInterpretToResult (interpretAST ast) initInterpState
-
--- interpret :: AST -> IO ()
--- interpret ast = void $ interpretToInterpState ast
-
