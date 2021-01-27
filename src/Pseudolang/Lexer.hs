@@ -3,7 +3,7 @@ module Pseudolang.Lexer where
 
 import Pseudolang.Prelude hiding (many, some, try)
 
-import Text.Megaparsec (ParsecT, Pos, SourcePos, choice, eof, getOffset, many, manyTill, mkPos, notFollowedBy, some, try)
+import Text.Megaparsec (ParsecT, Pos, choice, eof, getOffset, many, manyTill, mkPos, notFollowedBy, some, try)
 import Text.Megaparsec.Char (alphaNumChar, char, hspace1, letterChar, string, symbolChar)
 import qualified Text.Megaparsec.Char.Lexer as Megaparsec.Lexer
 

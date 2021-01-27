@@ -11,10 +11,6 @@ module Pseudolang.Interpreter.Real where
 
 import Pseudolang.Prelude
 
-import Data.Map.Strict (Map)
-import qualified Data.Vector as Vec
-import Data.Vector.Mutable (IOVector)
-import qualified Data.Vector.Mutable as MVec
 import Text.Megaparsec (eof, errorBundlePretty, parse)
 import Text.Pretty.Simple (pShow)
 

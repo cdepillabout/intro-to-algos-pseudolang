@@ -2,15 +2,12 @@ module Pseudolang.Interpreter where
 
 import Pseudolang.Prelude
 
-import Data.Map.Strict (Map)
 import qualified Data.Vector as Vec
 import Data.Vector.Mutable (IOVector)
 import qualified Data.Vector.Mutable as MVec
 import System.IO.Unsafe (unsafePerformIO)
-import Text.Megaparsec (eof, errorBundlePretty, parse)
 
 import Pseudolang.Parser
-import qualified Pseudolang.Lexer as Lexer
 
 data InterpState = InterpState
   { interpStateVars :: Map Identifier Val

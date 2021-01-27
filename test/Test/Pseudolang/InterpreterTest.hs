@@ -7,8 +7,7 @@ import Pseudolang.Prelude
 import Data.String.Interpolate (__i)
 import qualified Data.Vector as Vec
 import Data.Vector.Mutable (IOVector)
-import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
-import Text.Megaparsec (eof, errorBundlePretty, mkPos, parse)
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 import Pseudolang.Interpreter
 import Pseudolang.Interpreter.Real (parseAndInterpretToInterpState)

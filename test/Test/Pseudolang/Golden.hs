@@ -2,16 +2,9 @@ module Test.Pseudolang.Golden where
 
 import Pseudolang.Prelude
 
-import Data.String.Interpolate (__i)
-import qualified Data.Vector as Vec
-import Data.Vector.Mutable (IOVector)
-import System.Directory (getCurrentDirectory, listDirectory)
+import System.Directory (listDirectory)
 import System.FilePath (addExtension, isExtensionOf, takeFileName)
-import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
-import Text.Megaparsec (eof, errorBundlePretty, mkPos, parse)
-
-import Pseudolang.Interpreter
-import Pseudolang.Parser (Identifier(..))
+import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 
 data ExampleFile = ExampleFile
   { exampleFileRelPath :: FilePath

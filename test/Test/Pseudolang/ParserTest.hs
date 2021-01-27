@@ -7,7 +7,7 @@ import Pseudolang.Prelude
 
 import Data.String.Interpolate (__i)
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
-import Text.Megaparsec (eof, errorBundlePretty, mkPos, parse)
+import Text.Megaparsec (eof, parse)
 import Text.Pretty.Simple (pShow)
 
 import Pseudolang.Lexer (Tok(..), Token(Token), tokenizer)

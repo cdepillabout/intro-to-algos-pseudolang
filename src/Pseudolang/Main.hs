@@ -40,6 +40,6 @@ defaultMain = do
   run cmdOpts
 
 run :: CmdOpts -> IO ()
-run (CmdOpts file) = do
+run CmdOpts{file} = do
   fileContents <- readFile file
   parseAndInterpret $ decodeUtf8 fileContents

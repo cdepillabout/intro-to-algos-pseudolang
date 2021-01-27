@@ -7,8 +7,7 @@ import Control.Monad.Combinators.Expr (Operator(InfixL, Prefix), makeExprParser)
 import Control.Monad.Reader (local)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import qualified Data.Set as Set
-import Text.Megaparsec (ErrorItem(Label), ParsecT, Pos, SourcePos, between, choice, eof, failure, getOffset, many, mkPos, notFollowedBy, sepBy, some, token, try, unPos, (<?>))
-import Text.Megaparsec.Char (alphaNumChar, char, hspace1, letterChar, string)
+import Text.Megaparsec (ErrorItem(Label), ParsecT, between, eof, failure, many, sepBy, some, token, try, unPos, (<?>))
 
 import Pseudolang.Lexer (Tok(..), Token(Token))
 

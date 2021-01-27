@@ -3,7 +3,6 @@ module Test.Pseudolang.LexerTest where
 
 import Pseudolang.Prelude
 
-import Control.Monad.Fail (fail)
 import Text.Megaparsec (eof, errorBundlePretty, mkPos, parse)
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 
