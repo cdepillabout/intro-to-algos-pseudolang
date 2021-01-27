@@ -64,10 +64,6 @@ parseAndInterpret text = void $ parseAndInterpretToInterpState text
 interpretToInterpState :: AST -> IO InterpState
 interpretToInterpState ast = interpretToInterpStateWithInitial ast initialInterpState
 
--- interpretToInterpStateWithInitial :: AST -> InterpState -> IO InterpState
--- interpretToInterpStateWithInitial ast initInterpState = do
---   execStateT (runExceptT $ interpretAST ast) initInterpState
-
 interpretToInterpStateWithInitial :: AST -> InterpState -> IO InterpState
 interpretToInterpStateWithInitial ast initInterpState = do
   (_, resInterpState) <- runInterpret (interpretAST ast) initInterpState

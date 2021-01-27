@@ -10,17 +10,30 @@ import Data.Vector.Mutable (IOVector)
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 import Pseudolang.Interpreter
-import Pseudolang.Interpreter.Real (parseAndInterpretToInterpState)
+import Pseudolang.Interpreter.Test (InterpResult(InterpResult), parseAndInterpretToResult)
 import Pseudolang.Parser (Identifier(..))
+import Test.Pseudolang.Utils (_i)
 
 thawFromList :: MonadIO m => [Val] -> m (IOVector Val)
 thawFromList l = liftIO $ Vec.thaw $ Vec.fromList l
 
-interpreterTest :: Text -> (Map Identifier Val) -> IO ()
-interpreterTest input expectedVarMapping = do
-  resInterpState <- parseAndInterpretToInterpState input
+interpreterAndOutputTest :: Text -> Map Identifier Val -> Text -> IO ()
+interpreterAndOutputTest inputProgram expectedVarMapping expectedOutput = do
+  InterpResult resInterpState resOutput <- parseAndInterpretToResult inputProgram
   let resVarMapping = interpStateVars resInterpState
   resVarMapping `shouldBe` expectedVarMapping
+  resOutput `shouldBe` expectedOutput
+
+interpreterTest :: Text -> Map Identifier Val -> IO ()
+interpreterTest inputProgram expectedVarMapping = do
+  InterpResult resInterpState _ <- parseAndInterpretToResult inputProgram
+  let resVarMapping = interpStateVars resInterpState
+  resVarMapping `shouldBe` expectedVarMapping
+
+outputTest :: Text -> Text -> IO ()
+outputTest inputProgram expectedOutput = do
+  InterpResult _ resOutput <- parseAndInterpretToResult inputProgram
+  resOutput `shouldBe` expectedOutput
 
 test :: Spec
 test =
@@ -418,3 +431,16 @@ test =
               , ("k", ValInt 9)
               ]
       interpreterTest input expectedMapping
+    it "test27" $ do
+      let input =
+            [__i|
+              for x = 1 to 4
+                print(x)
+             |]
+          expectedOutput =
+            [_i|1
+              2
+              3
+              4
+              |]
+      outputTest input expectedOutput

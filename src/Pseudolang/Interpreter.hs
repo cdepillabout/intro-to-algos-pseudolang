@@ -352,12 +352,22 @@ interpretStatement = \case
   StatementWhileLoop whileLoop -> interpretWhileLoop whileLoop
 
 interpretBuiltinPrint :: MonadInterpret m => [Val] -> m Val
-interpretBuiltinPrint [] = do
-  printTextLn ""
+-- interpretBuiltinPrint [] = do
+--   printTextLn ""
+--   pure ValUnit
+-- interpretBuiltinPrint (v:vals) = do
+--   printText $ tshow v <> " "
+--   interpretBuiltinPrint vals
+interpretBuiltinPrint vals = do
+  printTextLn allVals
   pure ValUnit
-interpretBuiltinPrint (v:vals) = do
-  printText $ tshow v <> " "
-  interpretBuiltinPrint vals
+  where
+    shownVals :: [Text]
+    shownVals = fmap tshow vals
+
+    allVals :: Text
+    allVals = fold $ intersperse " " shownVals
+
 
 interpretBuiltinFloor :: MonadInterpret m => [Val] -> m Val
 interpretBuiltinFloor valArgs = do
