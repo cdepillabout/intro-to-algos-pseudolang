@@ -794,3 +794,42 @@ test =
       let input = "( )"
           expectedAST = ExprTuple (Tuple [])
       parserTest exprParser input expectedAST
+    it "test38" $ do
+      let input = "(x, y) = (1, 2)"
+          expectedAST =
+            Assignment
+              (AssignmentLHSTuple
+                [ AssignmentLHSIdentifier "x"
+                , AssignmentLHSIdentifier "y"
+                ]
+              )
+              (ExprTuple
+                (Tuple
+                  [ ExprInteger 1
+                  , ExprInteger 2
+                  ]
+                )
+              )
+      parserTest assignmentParser input expectedAST
+    it "test39" $ do
+      let input = "(x, (y, A[3]), z) = (1, (2, 7), 9)"
+          expectedAST =
+            Assignment
+              (AssignmentLHSTuple
+                [ AssignmentLHSIdentifier "x"
+                , AssignmentLHSTuple
+                    [ AssignmentLHSIdentifier "y"
+                    , AssignmentLHSArrayIndex (ArrayIndex "A" (ExprInteger 3))
+                    ]
+                , AssignmentLHSIdentifier "z"
+                ]
+              )
+              (ExprTuple
+                (Tuple
+                  [ ExprInteger 1
+                  , ExprTuple (Tuple [ExprInteger 2, ExprInteger 7])
+                  , ExprInteger 9
+                  ]
+                )
+              )
+      parserTest assignmentParser input expectedAST

@@ -462,3 +462,18 @@ test =
              |]
           expectedOutput = "(1, (3, 3), [3,4,5]) hello\n"
       outputTest input expectedOutput
+    it "test27" $ do
+      aVec <- thawFromList [ValInt 4]
+      let input =
+            [__i|
+              A = new-array(1)
+              ((x, y), (z, A[1])) = ((1, 2), (3, 4))
+             |]
+          expectedMapping =
+            mapFromList
+              [ ("A", ValVector aVec)
+              , ("x", ValInt 1)
+              , ("y", ValInt 2)
+              , ("z", ValInt 3)
+              ]
+      interpreterTest input expectedMapping

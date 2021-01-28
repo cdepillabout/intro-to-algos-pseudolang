@@ -61,6 +61,7 @@ data Assignment = Assignment AssignmentLHS Expr
 data AssignmentLHS
   = AssignmentLHSIdentifier Identifier
   | AssignmentLHSArrayIndex ArrayIndex
+  | AssignmentLHSTuple [AssignmentLHS]
   deriving stock (Eq, Ord, Show)
 
 data ForLoop = ForLoop Assignment ForDirection Expr [Statement]
@@ -329,7 +330,15 @@ stringLiteralParser = tokenParser f
 assignmentLHSParser :: Parser AssignmentLHS
 assignmentLHSParser = do
   try (fmap AssignmentLHSArrayIndex arrayIndexParser) <|>
-    (fmap AssignmentLHSIdentifier identParser)
+    (fmap AssignmentLHSIdentifier identParser) <|>
+    (fmap AssignmentLHSTuple assignmentLHSTupleParser)
+
+assignmentLHSTupleParser :: Parser [AssignmentLHS]
+assignmentLHSTupleParser = do
+  between
+    (tokenParser' TokOpenParen)
+    (tokenParser' TokCloseParen)
+    (sepBy assignmentLHSParser (tokenParser' TokComma))
 
 assignmentParser :: Parser Assignment
 assignmentParser = do

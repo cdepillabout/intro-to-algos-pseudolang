@@ -475,11 +475,26 @@ interpretAssignmentLHS (AssignmentLHSArrayIndex (ArrayIndex arrayIdent expr)) va
   idx <- interpretExprToInteger expr
   v <- getIdentVec arrayIdent
   MVec.write v (fromIntegral idx - 1) val
+interpretAssignmentLHS (AssignmentLHSTuple assignments) val = do
+  vals <- assertValIsTuple val
+  let lenAssignments = length assignments
+      lenVals = length vals
+  if lenAssignments /= lenVals
+    then
+      fail $
+        "In assignment statement, trying to assign " <> show lenVals <>
+        " values to " <> show lenAssignments <> " tuple elements"
+    else do
+      let zippedAssignVals = zip assignments vals
+      for_ zippedAssignVals \(assignment, val') -> interpretAssignmentLHS assignment val'
 
 interpretForLoop :: forall m. MonadInterpret m => ForLoop -> m ()
 interpretForLoop (ForLoop (Assignment AssignmentLHSArrayIndex{} _) _ _ _) = do
   fail $
     "In for loop, loop variable is an indexed array, but this is not allowed."
+interpretForLoop (ForLoop (Assignment AssignmentLHSTuple{} _) _ _ _) = do
+  fail $
+    "In for loop, loop variable is a tuple, but this is not allowed."
 interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident) _) direction goalExpr bodyStatements) = do
   interpretAssignment assignment
   loopWhileNotGoal
@@ -660,10 +675,19 @@ assertValIsInteger val = do
     ValIntNegativeInfinity ->
       fail $ "Expecting an integer, but got -infinity"
 
+assertValIsTuple :: MonadInterpret m => Val -> m [Val]
+assertValIsTuple (ValTuple vals) = pure vals
+assertValIsTuple val = fail $ "Expecting a tuple, but got a val: " <> show val
+
 interpretTuple :: MonadInterpret m => Tuple -> m Val
 interpretTuple (Tuple exprs) = do
   vals <- traverse interpretExpr exprs
   pure $ ValTuple vals
+
+interpretExprToValTuple :: MonadInterpret m => Expr -> m [Val]
+interpretExprToValTuple expr = do
+  val <- interpretExpr expr
+  assertValIsTuple val
 
 interpretExprToValInt :: MonadInterpret m => Expr -> m ValInt
 interpretExprToValInt expr = do
