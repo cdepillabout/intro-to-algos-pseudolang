@@ -444,3 +444,21 @@ test =
               4
               |]
       outputTest input expectedOutput
+    it "test28" $ do
+      let input =
+            [__i|
+              x = (1, 3 + 4, 7)
+             |]
+          expectedMapping =
+            mapFromList
+              [ ("x", ValTuple [ValInt 1, ValInt 7, ValInt 7])
+              ]
+      interpreterTest input expectedMapping
+    it "test29" $ do
+      let input =
+            [__i|
+              x = 3
+              print((1, (x, x), [3, 4, 5]), "hello")
+             |]
+          expectedOutput = "(1, (3, 3), [3,4,5]) hello\n"
+      outputTest input expectedOutput

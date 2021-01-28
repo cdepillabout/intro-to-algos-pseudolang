@@ -283,6 +283,7 @@ data Val
   = ValBool !Bool
   | ValInt !ValInt
   | ValString !Text
+  | ValTuple ![Val]
   | ValUnit
   | ValVector (IOVector Val)
   -- deriving stock (Eq, Ord, Show)
@@ -291,6 +292,11 @@ instance Show Val where
   show (ValBool b) = show b
   show (ValInt i) = show i
   show (ValString i) = unpack i
+  show (ValTuple t) =
+    let shownVals = fmap show t
+        renderedInnerVals = fold $ intersperse ", " shownVals
+    in
+    "(" <> renderedInnerVals <> ")"
   show ValUnit = "unit"
   show (ValVector v) = show g
     where
@@ -302,6 +308,7 @@ instance Eq Val where
   ValBool b1 == ValBool b2 = b1 == b2
   ValInt i1 == ValInt i2 = eqValInt i1 i2
   ValString s1 == ValString s2 = s1 == s2
+  ValTuple t1 == ValTuple t2 = t1 == t2
   ValUnit == ValUnit = True
   ValVector v1 == ValVector v2 =
     let v1' = g
@@ -321,6 +328,7 @@ valType :: Val -> String
 valType ValBool{} = "bool"
 valType ValInt{} = "int"
 valType ValString{} = "string"
+valType ValTuple{} = "tuple"
 valType ValUnit{} = "unit"
 valType ValVector{} = "array"
 
@@ -399,7 +407,7 @@ interpretBuiltinFunCall (Identifier builtinFunName) funCallArgs = do
     _ -> pure Nothing
 
 interpretFunCall :: MonadInterpret m => FunCall -> m Val
-interpretFunCall (FunCall funName funCallArgs) = do
+interpretFunCall (FunCall funName (Tuple funCallArgs)) = do
   maybeFunName <- getFunDef funName
   case maybeFunName of
     Nothing -> do
@@ -603,6 +611,7 @@ interpretExpr = \case
     valInt1 <- interpretExprToValInt expr1
     valInt2 <- interpretExprToValInt expr2
     pure $ ValInt $ timesValInt valInt1 valInt2
+  ExprTuple tuple -> interpretTuple tuple
   ExprVar identifier -> do
     getIdentVal identifier
 
@@ -650,6 +659,11 @@ assertValIsInteger val = do
       fail $ "Expecting an integer, but got infinity"
     ValIntNegativeInfinity ->
       fail $ "Expecting an integer, but got -infinity"
+
+interpretTuple :: MonadInterpret m => Tuple -> m Val
+interpretTuple (Tuple exprs) = do
+  vals <- traverse interpretExpr exprs
+  pure $ ValTuple vals
 
 interpretExprToValInt :: MonadInterpret m => Expr -> m ValInt
 interpretExprToValInt expr = do

@@ -281,12 +281,15 @@ test =
                         (ExprFunCall
                            (FunCall
                               (Identifier "Insertion-Sort")
-                              [ ExprVar (Identifier "b")
-                              , ExprPlus (ExprInteger 1) (ExprInteger 2)
-                              ]))))
+                              (Tuple
+                                [ ExprVar (Identifier "b")
+                                , ExprPlus (ExprInteger 1) (ExprInteger 2)
+                                ])))))
               , TopLevelStatement
-                  (StatementFunCall (FunCall (Identifier "print") [ExprInteger 5]))
-              , TopLevelStatement (StatementFunCall (FunCall (Identifier "goto") []))
+                  (StatementFunCall
+                      (FunCall (Identifier "print") (Tuple [ExprInteger 5])))
+              , TopLevelStatement
+                  (StatementFunCall (FunCall (Identifier "goto") (Tuple [])))
               ]
       parserTest astParser input expectedAST
     it "test17" $ do
@@ -772,3 +775,22 @@ test =
                 )
               )
       parserTestWithIndent 2 ifParser input expectedAST
+    it "test35" $ do
+      let input = "( 1, 3+4, 5 )"
+          expectedAST =
+            ExprTuple
+              (Tuple
+                [ ExprInteger 1
+                , ExprPlus (ExprInteger 3) (ExprInteger 4)
+                , ExprInteger 5
+                ]
+              )
+      parserTest exprParser input expectedAST
+    it "test36" $ do
+      let input = "( 1 )"
+          expectedAST = ExprInteger 1
+      parserTest exprParser input expectedAST
+    it "test37" $ do
+      let input = "( )"
+          expectedAST = ExprTuple (Tuple [])
+      parserTest exprParser input expectedAST

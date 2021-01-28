@@ -46,7 +46,10 @@ data ElseIfElse = ElseIfElse
 data FunDef = FunDef Identifier [Identifier] [Statement]
   deriving stock (Eq, Ord, Show)
 
-data FunCall = FunCall Identifier [Expr]
+data FunCall = FunCall Identifier Tuple
+  deriving stock (Eq, Ord, Show)
+
+data Tuple = Tuple [Expr]
   deriving stock (Eq, Ord, Show)
 
 data Property = Property Identifier Identifier
@@ -92,6 +95,7 @@ data Expr
   | ExprProperty Property -- ^ This is like @A.length@.
   | ExprString Text -- ^ This is like @"hello bye"@.
   | ExprTimes Expr Expr
+  | ExprTuple Tuple
   | ExprVar Identifier
   deriving stock (Eq, Ord, Show)
 
@@ -353,14 +357,19 @@ arrayIndexParser = do
       exprParser
   pure $ ArrayIndex ident indexExpr
 
-funCallParser :: Parser FunCall
-funCallParser = do
-  funName <- identParser
-  (args :: [Expr]) <-
+tupleParser :: Parser Tuple
+tupleParser = do
+  exprs <-
     between
       (tokenParser' TokOpenParen)
       (tokenParser' TokCloseParen)
       (sepBy exprParser (tokenParser' TokComma))
+  pure $ Tuple exprs
+
+funCallParser :: Parser FunCall
+funCallParser = do
+  funName <- identParser
+  args <- tupleParser
   pure $ FunCall funName args
 
 propertyParser :: Parser Property
@@ -375,9 +384,14 @@ infinityParser = do
   tokenParser' TokInfinity
   pure ExprInfinity
 
+parenExprParser :: Parser Expr
+parenExprParser = do
+  between (tokenParser' TokOpenParen) (tokenParser' TokCloseParen) exprParser
+
 termParser :: Parser Expr
 termParser =
-  between (tokenParser' TokOpenParen) (tokenParser' TokCloseParen) exprParser
+  try parenExprParser
+  <|> fmap ExprTuple tupleParser
   <|> arrayLiteralParser
   <|> integerParser
   <|> stringLiteralParser
