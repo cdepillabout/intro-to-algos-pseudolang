@@ -1,0 +1,20 @@
+// From Chapter 4.1, page 71
+
+fun Find-Max-Crossing-Subarray(A, low, mid, high)
+  left-sum = -infinity
+  sum = 0
+  for i = mid downto low
+    sum = sum + A[i]
+    if sum > left-sum
+      left-sum = sum
+      max-left = i
+  right-sum = -infinity
+  sum = 0
+  for j = mid + 1 to high
+    sum = sum + A[j]
+    if sum > right-sum
+      right-sum = sum
+      max-right = j
+  return (max-left, max-right, left-sum + right-sum)
+
+print(Find-Max-Crossing-Subarray([-16, -23, 18, 20, -7, 12, -5, -22], 1, 4, 8))
