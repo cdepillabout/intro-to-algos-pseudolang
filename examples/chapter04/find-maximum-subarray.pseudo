@@ -17,4 +17,35 @@ fun Find-Max-Crossing-Subarray(A, low, mid, high)
       max-right = j
   return (max-left, max-right, left-sum + right-sum)
 
-print(Find-Max-Crossing-Subarray([-16, -23, 18, 20, -7, 12, -5, -22], 1, 4, 8))
+// print(Find-Max-Crossing-Subarray([-16, -23, 18, 20, -7, 12, -5, -22], 1, 4, 8))
+
+// A = [-16, -23, 18, 20, -7, 12, -5, -22]
+// low = 1
+// mid = 4
+// left-sum = -infinity
+// sum = 0
+// for i = mid downto low
+//   // TODO: loop isn't running at all??
+//   print("in for, i:", i)
+//   print("in for, left-sum:", left-sum)
+//   print("in for, sum:", sum)
+//   sum = sum + A[i]
+//   if sum > left-sum
+//     left-sum = sum
+//     max-left = i
+
+fun Find-Maximum-Subarray(A, low, high)
+  if high == low
+    return (low, high, A[low])
+  else mid = floor((low + high) / 2)
+    (left-low, left-high, left-sum) = Find-Maximum-Subarray(A, low, mid)
+    (right-low, right-high, right-sum) = Find-Maximum-Subarray(A, mid + 1, high)
+    (cross-low, cross-high, cross-sum) = Find-Max-Crossing-Subarray(A, low, mid, high)
+    if left-sum >= right-sum and left-sum >= cross-sum
+      return (left-low, left-high, left-sum)
+    elseif right-sum >= left-sum and right-sum >= cross-sum
+      return (right-low, right-high, right-sum)
+    else return (cross-low, cross-high, cross-sum)
+
+A = [13, -3, -25, 20, -3, -16, -23, 18, 20, -7, 12, -5, -22, 15, -4, 7]
+print(Find-Maximum-Subarray(A, 1, A.length))

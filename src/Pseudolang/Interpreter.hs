@@ -523,11 +523,17 @@ interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident)
       interpretStatement thisStatement
       loop remainingStatements
 
+    loopIsGoal :: ValInt -> ValInt -> Bool
+    loopIsGoal i goal =
+      case direction of
+        ForDirectionDownTo -> lessThanValInt i goal
+        ForDirectionTo -> greaterThanValInt i goal
+
     loopWhileNotGoal :: m ()
     loopWhileNotGoal = do
       i <- getLoopIdentVal
       goal <- interpretExprToValInt goalExpr
-      if greaterThanValInt i goal
+      if loopIsGoal i goal
         then pure ()
         else loop bodyStatements
 
@@ -579,6 +585,10 @@ interpretExpr = \case
     valInt1 <- interpretExprToValInt expr1
     valInt2 <- interpretExprToValInt expr2
     pure $ ValInt $ quotValInt valInt1 valInt2
+  ExprEquals expr1 expr2 -> do
+    valInt1 <- interpretExprToValInt expr1
+    valInt2 <- interpretExprToValInt expr2
+    pure $ ValBool $ eqValInt valInt1 valInt2
   ExprGreaterThan expr1 expr2 -> do
     valInt1 <- interpretExprToValInt expr1
     valInt2 <- interpretExprToValInt expr2

@@ -462,7 +462,7 @@ test =
              |]
           expectedOutput = "(1, (3, 3), [3,4,5]) hello\n"
       outputTest input expectedOutput
-    it "test27" $ do
+    it "test30" $ do
       aVec <- thawFromList [ValInt 4]
       let input =
             [__i|
@@ -475,5 +475,20 @@ test =
               , ("x", ValInt 1)
               , ("y", ValInt 2)
               , ("z", ValInt 3)
+              ]
+      interpreterTest input expectedMapping
+    it "test31" $ do
+      let input =
+            [__i|
+              b = 3
+              c = 1 == 3
+              for i = 3 downto 1
+                b = b + 1
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "b", ValInt 6)
+              , (Identifier "c", ValBool False)
+              , (Identifier "i", ValInt 0)
               ]
       interpreterTest input expectedMapping

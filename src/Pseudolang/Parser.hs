@@ -81,6 +81,7 @@ data Expr
   | ExprArrayIndex ArrayIndex -- ^ This is like @A[3]@.
   | ExprArrayLit [Expr] -- ^ This is like @[1, 3, x]@.
   | ExprDivide Expr Expr
+  | ExprEquals Expr Expr  -- ^ This is like @x == y@.
   | ExprFunCall FunCall -- ^ This is like @hello(1, 3)@.
   | ExprGreaterThan Expr Expr
   | ExprGreaterThanOrEqualTo Expr Expr
@@ -421,7 +422,8 @@ exprTable =
   , [ binary (tokenParser' TokPlus) ExprPlus
     , binary (tokenParser' TokMinus) ExprMinus
     ]
-  , [ binary (tokenParser' TokLessThan) ExprLessThan
+  , [ binary (tokenParser' TokDoubleEquals) ExprEquals
+    , binary (tokenParser' TokLessThan) ExprLessThan
     , binary (tokenParser' TokLessThanOrEqualTo) ExprLessThanOrEqualTo
     , binary (tokenParser' TokGreaterThan) ExprGreaterThan
     , binary (tokenParser' TokGreaterThanOrEqualTo) ExprGreaterThanOrEqualTo

@@ -22,10 +22,11 @@ data Tok
   | TokCloseSquareBracket
   | TokComma
   | TokDivide
+  | TokDoubleEquals -- ^ @==@
   | TokDownTo
   | TokElse
   | TokElseIf
-  | TokEquals
+  | TokEquals -- ^ @=@
   | TokFor
   | TokFun
   | TokGreaterThan
@@ -148,6 +149,7 @@ reservedSyms =
   , ("<", TokLessThan)
   , ("<=", TokLessThanOrEqualTo)
   , ("=", TokEquals)
+  , ("==", TokDoubleEquals)
   , (">", TokGreaterThan)
   , (">=", TokGreaterThanOrEqualTo)
   , ("[", TokOpenSquareBracket)
