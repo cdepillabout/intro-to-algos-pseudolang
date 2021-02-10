@@ -492,3 +492,15 @@ test =
               , (Identifier "i", ValInt 0)
               ]
       interpreterTest input expectedMapping
+    it "test32" $ do
+      let input =
+            [__i|
+              set-seed(3)
+              print(Random(1, 1000))
+              set-seed(1)
+              print(Random(0, 1))
+              set-seed(100561)
+              print(Random(0, 1))
+             |]
+          expectedOutput = "364\n1\n0\n"
+      outputTest input expectedOutput
