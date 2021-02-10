@@ -1,0 +1,14 @@
+
+set-seed(1)
+
+fun Randomize-In-Place(A)
+  n = A.length
+  for i = 1 to n
+    rand-index = Random(i, n)
+    tmp = A[i]
+    A[i] = A[rand-index]
+    A[rand-index] = tmp
+
+A = [1,2,3,4,5]
+Randomize-In-Place(A)
+print(A)

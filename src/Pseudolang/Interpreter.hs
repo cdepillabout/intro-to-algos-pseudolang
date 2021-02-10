@@ -6,6 +6,7 @@ import qualified Data.Vector as Vec
 import Data.Vector.Mutable (IOVector)
 import qualified Data.Vector.Mutable as MVec
 import System.IO.Unsafe (unsafePerformIO)
+import System.Random (Random)
 
 import Pseudolang.Parser
 
@@ -21,6 +22,10 @@ class MonadPrint m where
 printTextLn :: MonadPrint m => Text -> m ()
 printTextLn t = printText $ t <> "\n"
 
+class MonadRand m where
+  getRandR :: Random a => (a, a) -> m a
+  setSeed :: Int -> m ()
+
 class
   ( MonadState InterpState m
   , MonadError Val m
@@ -33,6 +38,7 @@ class
     -- ^ Used for the Data.Vector.thaw operation for creating mutatable vectors.
   , MonadFail m
     -- ^ Used for error messages when the user does something bad.
+  , MonadRand m
   ) => MonadInterpret m
 
 initialInterpState :: InterpState
@@ -389,12 +395,34 @@ interpretBuiltinNewArray valArgs = do
   vec <- Vec.thaw (Vec.replicate (fromIntegral int) ValUnit)
   pure $ ValVector vec
 
+interpretBuiltinRandom :: MonadInterpret m => [Val] -> m Val
+interpretBuiltinRandom valArgs = do
+  (start, end) <- assertTwoFunArgs "Random" valArgs
+  startVal <- assertValIsInteger start
+  endVal <- assertValIsInteger end
+  randVal <- getRandR (startVal, endVal)
+  pure $ ValInt $ ValIntInteger randVal
+
+interpretBuiltinSetSeed :: MonadInterpret m => [Val] -> m Val
+interpretBuiltinSetSeed valArgs = do
+  val <- assertOneFunArg "set-seed" valArgs
+  int <- assertValIsInteger val
+  setSeed (fromInteger int)
+  pure $ ValUnit
+
 assertOneFunArg :: MonadInterpret m => String -> [a] -> m a
 assertOneFunArg _ [arg] = pure arg
 assertOneFunArg funName args =
   fail $
     funName <> "() function called with " <> show (length args) <>
     " args, but it should have one arg."
+
+assertTwoFunArgs :: MonadInterpret m => String -> [a] -> m (a, a)
+assertTwoFunArgs _ [arg1, arg2] = pure (arg1, arg2)
+assertTwoFunArgs funName args =
+  fail $
+    funName <> "() function called with " <> show (length args) <>
+    " args, but it should have two args."
 
 interpretBuiltinFunCall :: MonadInterpret m => Identifier -> [Expr] -> m (Maybe Val)
 interpretBuiltinFunCall (Identifier builtinFunName) funCallArgs = do
@@ -404,6 +432,8 @@ interpretBuiltinFunCall (Identifier builtinFunName) funCallArgs = do
     "floor" -> fmap Just $ interpretBuiltinFloor funCallVals
     "new-array" -> fmap Just $ interpretBuiltinNewArray funCallVals
     "print" -> fmap Just $ interpretBuiltinPrint funCallVals
+    "Random" -> fmap Just $ interpretBuiltinRandom funCallVals
+    "set-seed" -> fmap Just $ interpretBuiltinSetSeed funCallVals
     _ -> pure Nothing
 
 interpretFunCall :: MonadInterpret m => FunCall -> m Val

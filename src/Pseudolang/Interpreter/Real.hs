@@ -14,9 +14,10 @@ import Pseudolang.Prelude
 import Text.Megaparsec (eof, errorBundlePretty, parse)
 import Text.Pretty.Simple (pShow)
 
-import Pseudolang.Interpreter (MonadInterpret, MonadPrint, InterpState, Val, initialInterpState, interpretAST, printText)
+import Pseudolang.Interpreter (MonadInterpret, MonadRand(..), MonadPrint, InterpState, Val, initialInterpState, interpretAST, printText)
 import Pseudolang.Parser (AST, astParser)
 import qualified Pseudolang.Lexer as Lexer
+import System.Random (Random, mkStdGen, randomRIO, setStdGen)
 
 newtype Interpret a =
   Interpret { unInterpret :: ExceptT Val (StateT InterpState IO) a }
@@ -38,6 +39,13 @@ runInterpret (Interpret m) initInterpState =
 instance MonadPrint Interpret where
   printText :: Text -> Interpret ()
   printText txt = Interpret $ liftIO $ putStr txt
+
+instance MonadRand Interpret where
+  getRandR :: Random a => (a, a) -> Interpret a
+  getRandR range = Interpret $ liftIO $ randomRIO range
+
+  setSeed :: Int -> Interpret ()
+  setSeed i = Interpret $ liftIO $ setStdGen (mkStdGen i)
 
 parseAndInterpretToInterpStateWithInitial ::
      Text -> InterpState -> IO InterpState
