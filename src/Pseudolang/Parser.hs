@@ -155,14 +155,16 @@ nonEmptyStatementsParser = do
     (h:ts) -> pure (h :| ts)
 
 statementsParser :: Parser [Statement]
-statementsParser = do
+statementsParser = trace "before statementsParser" do
+  traceM "entering statementsParser"
   -- List of either blank lines or statements
   eitherStatements <-
     some do
       fmap Left (try $ optional indentParser *> blankLineParser) <|>
-        fmap Right indentedStatementParser -- <?> "statement in a list of statements"
+        fmap Right indentedStatementParser <?> "statement in a list of statements"
+  traceShowM eitherStatements
   -- Ignore the blank lines
-  pure $ catRights eitherStatements
+  pure $ trace "ending statementsParser" $ catRights eitherStatements
 
 -- | Parse any number of blank lines
 blankLineParser :: Parser ()

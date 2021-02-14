@@ -6,7 +6,7 @@ module Test.Pseudolang.ParserTest where
 import Pseudolang.Prelude
 
 import Data.String.Interpolate (__i)
-import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
+import Test.Hspec (Spec, describe, expectationFailure, fit, it, shouldBe)
 import Text.Megaparsec (eof, parse)
 import Text.Pretty.Simple (pShow)
 
@@ -841,20 +841,73 @@ test =
               (AssignmentLHSProperty (Property "A" "heap-size"))
               (ExprInteger 3)
       parserTest assignmentParser input expectedAST
-    it "test33" $ do
-      let input =
-            [__i|
-              fun X()
-                if 1 == 1
-                  largest = 11
-                if 6 == 11
-                  largest = 100
-             |]
+    -- it "test41" $ do
+    --   let input =
+    --         [__i|
+    --           fun X()
+    --             if 1 == 1
+    --               largest = 11
+    --             if 6 == 11
+    --               largest = 100
+    --          |]
+    --       expectedAST =
+    --         FunDef
+    --           "X"
+    --           []
+    --           [ ifStmnt (1 @== 1) [ assignStmnt "largest" 11 ]
+    --           , ifStmnt (6 @== 11) [ assignStmnt "largest" 100 ]
+    --           ]
+    --   parserTest funDefParser input expectedAST
+    -- it "test42" $ do
+    --   let input =
+    --         [__i|
+    --           if 1 == 1
+    --             largest = 11
+    --           if 6 == 11
+    --             largest = 100
+    --          |]
+    --       expectedAST =
+    --         [ ifStmnt (1 @== 1) [ assignStmnt "largest" 11 ]
+    --         , ifStmnt (6 @== 11) [ assignStmnt "largest" 100 ]
+    --         ]
+    --   parserTest statementsParser input expectedAST
+    -- it "test43" $ do
+    --   let input =
+    --         [__i|
+    --           if 1 == 1
+    --             if 3 == 3
+    --               largest = 11
+    --             if 6 == 11
+    --               largest = 100
+    --          |]
+    --       expectedAST =
+    --         [ ifStmnt
+    --             (1 @== 1)
+    --             [ ifStmnt (3 @== 3) [ assignStmnt "largest" 11 ]
+    --             , ifStmnt (6 @== 11) [ assignStmnt "largest" 100 ]
+    --             ]
+    --         ]
+    --   parserTest statementsParser input expectedAST
+    -- it "test44" $ do
+    --   let input =
+    --         [__i|
+    --           if 1 == 1
+    --             if 3 == 3
+    --               largest = 11
+    --             x = 10
+    --          |]
+    --       expectedAST =
+    --         [ ifStmnt
+    --             (1 @== 1)
+    --             [ ifStmnt (3 @== 3) [ assignStmnt "largest" 11 ]
+    --             , assignStmnt "x" 10
+    --             ]
+    --         ]
+    --   parserTest statementsParser input expectedAST
+    fit "test45" $ do
+      let input = "  if 1 == 2\n    x = 3\n  y = 4\n"
           expectedAST =
-            FunDef
-              "X"
-              []
-              [ ifStmnt (1 @== 1) [ assignStmnt "largest" 11 ]
-              , ifStmnt (6 @== 11) [ assignStmnt "largest" 100 ]
-              ]
-      parserTest funDefParser input expectedAST
+            [ ifStmnt (1 @== 2) [ assignStmnt "x" 3 ]
+            , assignStmnt "y" 4
+            ]
+      parserTest (indented statementsParser) input expectedAST
