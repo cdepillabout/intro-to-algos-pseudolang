@@ -144,7 +144,7 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ (Identifier "A", ValVector aVec)
+              [ (Identifier "A", ValVector aVec emptyVecProps)
               ]
       interpreterTest input expectedMapping
     it "test11" $ do
@@ -158,7 +158,7 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ (Identifier "A", ValVector aVec)
+              [ (Identifier "A", ValVector aVec emptyVecProps)
               , (Identifier "b", ValInt 3)
               , (Identifier "x", ValInt 306)
               ]
@@ -172,7 +172,7 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ (Identifier "A", ValVector aVec)
+              [ (Identifier "A", ValVector aVec emptyVecProps)
               , (Identifier "b", ValInt 4)
               ]
       interpreterTest input expectedMapping
@@ -245,7 +245,7 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ ("A", ValVector aVec)
+              [ ("A", ValVector aVec emptyVecProps)
               ]
       interpreterTest input expectedMapping
     it "test17" $ do
@@ -259,7 +259,7 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ ("A", ValVector aVec)
+              [ ("A", ValVector aVec emptyVecProps)
               , ("j", ValInt 7)
               , ("i", ValInt 5)
               , ("key", ValInt 3)
@@ -280,7 +280,7 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ ("A", ValVector aVec)
+              [ ("A", ValVector aVec emptyVecProps)
               , ("j", ValInt 7)
               , ("i", ValInt 2)
               , ("key", ValInt 3)
@@ -384,7 +384,7 @@ test =
           expectedMapping =
             mapFromList
               [ ("n1", ValInt 4)
-              , ("L", ValVector lVec)
+              , ("L", ValVector lVec emptyVecProps)
               ]
       interpreterTest input expectedMapping
     it "test26" $ do
@@ -418,14 +418,14 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ ("A", ValVector aVec)
+              [ ("A", ValVector aVec emptyVecProps)
               , ("p", ValInt 1)
               , ("q", ValInt 4)
               , ("r", ValInt 8)
               , ("n1", ValInt 4)
               , ("n2", ValInt 4)
-              , ("L", ValVector lVec)
-              , ("R", ValVector rVec)
+              , ("L", ValVector lVec emptyVecProps)
+              , ("R", ValVector rVec emptyVecProps)
               , ("i", ValInt 5)
               , ("j", ValInt 5)
               , ("k", ValInt 9)
@@ -471,7 +471,7 @@ test =
              |]
           expectedMapping =
             mapFromList
-              [ ("A", ValVector aVec)
+              [ ("A", ValVector aVec emptyVecProps)
               , ("x", ValInt 1)
               , ("y", ValInt 2)
               , ("z", ValInt 3)
@@ -504,3 +504,29 @@ test =
              |]
           expectedOutput = "364\n1\n0\n"
       outputTest input expectedOutput
+    it "test33" $ do
+      aVec <- thawFromList [ValInt 5, ValInt 2, ValInt 4]
+      let input =
+            [__i|
+              A = [5, 2, 4]
+              A.heap-size = 2
+              A.foobar = 100
+              print(A.heap-size)
+              print(A.length)
+             |]
+          expectedMapping =
+            mapFromList
+              [ ( "A"
+                , ValVector
+                    aVec
+                    (VecProps
+                      (mapFromList
+                        [ (Identifier "heap-size", ValInt 2)
+                        , (Identifier "foobar", ValInt 100)
+                        ]
+                      )
+                    )
+                )
+              ]
+          expectedOutput = "2\n3\n"
+      interpreterAndOutputTest input expectedMapping expectedOutput

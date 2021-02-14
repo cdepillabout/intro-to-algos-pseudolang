@@ -10,8 +10,10 @@ import System.Random (Random)
 
 import Pseudolang.Parser
 
+type IdentValMap = Map Identifier Val
+
 data InterpState = InterpState
-  { interpStateVars :: Map Identifier Val
+  { interpStateVars :: IdentValMap
   , interpStateFuns :: Map Identifier FunDef
   }
   -- deriving stock (Eq, Ord, Show)
@@ -285,13 +287,20 @@ instance Show ValInt where
   show ValIntPositiveInfinity = "infinity"
   show ValIntNegativeInfinity = "-infinity"
 
+newtype VecProps = VecProps { unVecProps :: IdentValMap }
+  deriving stock (Eq, Show)
+  deriving newtype (Monoid, Semigroup)
+
+emptyVecProps :: VecProps
+emptyVecProps = VecProps mempty
+
 data Val
   = ValBool !Bool
   | ValInt !ValInt
   | ValString !Text
   | ValTuple ![Val]
   | ValUnit
-  | ValVector (IOVector Val)
+  | ValVector (IOVector Val) VecProps
   -- deriving stock (Eq, Ord, Show)
 
 instance Show Val where
@@ -304,7 +313,7 @@ instance Show Val where
     in
     "(" <> renderedInnerVals <> ")"
   show ValUnit = "unit"
-  show (ValVector v) = show g
+  show (ValVector v _) = show g
     where
       g :: Vec.Vector Val
       g = unsafePerformIO $ Vec.freeze v
@@ -316,10 +325,10 @@ instance Eq Val where
   ValString s1 == ValString s2 = s1 == s2
   ValTuple t1 == ValTuple t2 = t1 == t2
   ValUnit == ValUnit = True
-  ValVector v1 == ValVector v2 =
+  ValVector v1 v1Props == ValVector v2 v2Props =
     let v1' = g
         v2' = h
-    in v1' == v2'
+    in v1' == v2' && v1Props == v2Props
     where
       g :: Vec.Vector Val
       g = unsafePerformIO $ Vec.freeze v1
@@ -393,7 +402,7 @@ interpretBuiltinNewArray valArgs = do
   val <- assertOneFunArg "new-array" valArgs
   int <- assertValIsInteger val
   vec <- Vec.thaw (Vec.replicate (fromIntegral int) ValUnit)
-  pure $ ValVector vec
+  pure $ ValVector vec mempty
 
 interpretBuiltinRandom :: MonadInterpret m => [Val] -> m Val
 interpretBuiltinRandom valArgs = do
@@ -503,8 +512,12 @@ interpretAssignmentLHS (AssignmentLHSIdentifier ident) val = do
   setVar ident val
 interpretAssignmentLHS (AssignmentLHSArrayIndex (ArrayIndex arrayIdent expr)) val = do
   idx <- interpretExprToInteger expr
-  v <- getIdentVec arrayIdent
+  (v, _) <- getIdentVec arrayIdent
   MVec.write v (fromIntegral idx - 1) val
+interpretAssignmentLHS (AssignmentLHSProperty (Property arrayIdent propIdent)) val = do
+  (v, VecProps props) <- getIdentVec arrayIdent
+  let newProps = insertMap propIdent val props
+  setVar arrayIdent (ValVector v $ VecProps newProps)
 interpretAssignmentLHS (AssignmentLHSTuple assignments) val = do
   vals <- assertValIsTuple val
   let lenAssignments = length assignments
@@ -525,6 +538,9 @@ interpretForLoop (ForLoop (Assignment AssignmentLHSArrayIndex{} _) _ _ _) = do
 interpretForLoop (ForLoop (Assignment AssignmentLHSTuple{} _) _ _ _) = do
   fail $
     "In for loop, loop variable is a tuple, but this is not allowed."
+interpretForLoop (ForLoop (Assignment AssignmentLHSProperty{} _) _ _ _) = do
+  fail $
+    "In for loop, loop variable is an array property, but this is not allowed."
 interpretForLoop (ForLoop assignment@(Assignment (AssignmentLHSIdentifier ident) _) direction goalExpr bodyStatements) = do
   interpretAssignment assignment
   loopWhileNotGoal
@@ -605,12 +621,12 @@ interpretExpr = \case
         pure $ ValBool bool2
   ExprArrayIndex (ArrayIndex arrIdent idxExpr) -> do
     idx <- interpretExprToInteger idxExpr
-    vec <- getIdentVec arrIdent
+    (vec, _) <- getIdentVec arrIdent
     MVec.read vec (fromIntegral idx - 1)
   ExprArrayLit exprs -> do
     vals <- traverse interpretExpr exprs
     vec <- Vec.thaw (Vec.fromList vals)
-    pure $ ValVector vec
+    pure $ ValVector vec emptyVecProps
   ExprDivide expr1 expr2 -> do
     valInt1 <- interpretExprToValInt expr1
     valInt2 <- interpretExprToValInt expr2
@@ -674,15 +690,21 @@ interpretExpr = \case
 --
 -- There are only a few available properties.
 interpretProperty :: MonadInterpret m => Property -> m Val
-interpretProperty (Property ident propIdent) =
+interpretProperty (Property ident propIdent) = do
+  -- properties are only available on Vectors
+  (vec, VecProps props) <- getIdentVec ident
   case propIdent of
-    (Identifier "length") -> do
+    "length" -> do
       -- .length is only available on vectors.
-      vec <- getIdentVec ident
       let vecLength = MVec.length vec
       pure $ ValInt $ ValIntInteger (fromIntegral vecLength)
-    (Identifier x) ->
-      fail $ "Trying to access property " <> unpack x <> ", but unknown property."
+    _ -> do
+      case lookup propIdent props of
+        Nothing ->
+          fail $
+            "Trying to access property " <> unpack (unIdentifier propIdent) <>
+            " on " <> unpack (unIdentifier ident) <> ", but unknown property."
+        Just val -> pure val
 
 getIdentVal :: MonadInterpret m => Identifier -> m Val
 getIdentVal ident = do
@@ -691,11 +713,11 @@ getIdentVal ident = do
     Nothing -> fail $ "No value for identifier: " <> show ident
     Just val -> pure val
 
-getIdentVec :: MonadInterpret m => Identifier -> m (IOVector Val)
+getIdentVec :: MonadInterpret m => Identifier -> m (IOVector Val, VecProps)
 getIdentVec ident = do
   val <- getIdentVal ident
   case val of
-    ValVector v -> pure v
+    ValVector v props -> pure (v, props)
     val' -> do
       fail $
         "Trying to get identifier " <> show ident <>

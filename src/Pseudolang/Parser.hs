@@ -60,6 +60,7 @@ data Assignment = Assignment AssignmentLHS Expr
 
 data AssignmentLHS
   = AssignmentLHSIdentifier Identifier
+  | AssignmentLHSProperty Property
   | AssignmentLHSArrayIndex ArrayIndex
   | AssignmentLHSTuple [AssignmentLHS]
   deriving stock (Eq, Ord, Show)
@@ -101,7 +102,7 @@ data Expr
   | ExprVar Identifier
   deriving stock (Eq, Ord, Show)
 
-newtype Identifier = Identifier Text
+newtype Identifier = Identifier { unIdentifier :: Text }
   deriving stock (Eq, Ord, Show)
   deriving newtype (IsString)
 
@@ -331,6 +332,7 @@ stringLiteralParser = tokenParser f
 assignmentLHSParser :: Parser AssignmentLHS
 assignmentLHSParser = do
   try (fmap AssignmentLHSArrayIndex arrayIndexParser) <|>
+    try (fmap AssignmentLHSProperty propertyParser) <|>
     (fmap AssignmentLHSIdentifier identParser) <|>
     (fmap AssignmentLHSTuple assignmentLHSTupleParser)
 

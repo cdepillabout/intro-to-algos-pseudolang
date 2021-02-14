@@ -833,3 +833,10 @@ test =
                 )
               )
       parserTest assignmentParser input expectedAST
+    it "test40" $ do
+      let input = "A.heap-size = 3"
+          expectedAST =
+            Assignment
+              (AssignmentLHSProperty (Property "A" "heap-size"))
+              (ExprInteger 3)
+      parserTest assignmentParser input expectedAST
