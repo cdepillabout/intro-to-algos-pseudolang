@@ -1,0 +1,32 @@
+
+fun Parent(i)
+  return floor(i / 2)
+
+fun Left(i)
+  return 2 * i
+
+fun Right(i)
+  return 2 * i + 1
+
+fun Max-Heapify(A, i)
+  l = Left(i)
+  r = Right(i)
+  if l <= A.heap-size and A[l] > A[i]
+    largest = l
+  else largest = i
+  if r <= A.heap-size and A[r] > A[largest]
+    largest = r
+  if largest /= i
+    tmp = A[i]
+    A[i] = A[largest]
+    A[largest] = tmp
+    Max-Heapify(A, largest)
+
+fun Build-Max-Heap(A)
+  A.heap-size = A.length
+  for i = floor(A.length / 2) downto 1
+    Max-Heapify(A, i)
+
+A = [4,1,3,2,16,9,10,14,8,7]
+Build-Max-Heap(A)
+print(A)

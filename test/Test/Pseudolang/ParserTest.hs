@@ -10,6 +10,7 @@ import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 import Text.Megaparsec (eof, parse)
 import Text.Pretty.Simple (pShow)
 
+import Pseudolang.ASTBuilder
 import Pseudolang.Lexer (Tok(..), Token(Token), tokenizer)
 import Pseudolang.Parser
 import qualified Test.Pseudolang.LexerTest as Test.Lexer
@@ -840,3 +841,20 @@ test =
               (AssignmentLHSProperty (Property "A" "heap-size"))
               (ExprInteger 3)
       parserTest assignmentParser input expectedAST
+    it "test33" $ do
+      let input =
+            [__i|
+              fun X()
+                if 1 == 1
+                  largest = 11
+                if 6 == 11
+                  largest = 100
+             |]
+          expectedAST =
+            FunDef
+              "X"
+              []
+              [ ifStmnt (1 @== 1) [ assignStmnt "largest" 11 ]
+              , ifStmnt (6 @== 11) [ assignStmnt "largest" 100 ]
+              ]
+      parserTest funDefParser input expectedAST

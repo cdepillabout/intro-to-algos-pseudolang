@@ -530,3 +530,29 @@ test =
               ]
           expectedOutput = "2\n3\n"
       interpreterAndOutputTest input expectedMapping expectedOutput
+    it "test34" $ do
+      let input =
+            [__i|
+              a = 3 /= 3
+              b = 3 /= 10
+             |]
+          expectedMapping =
+            mapFromList
+              [ (Identifier "a", ValBool False)
+              , (Identifier "b", ValBool True)
+              ]
+      interpreterTest input expectedMapping
+    -- it "test35" $ do
+    --   let input =
+    --         [__i|
+    --           fun X()
+    --             if 1 == 1
+    --               largest = 11
+    --             if 6 == 11
+    --               largest = 100
+    --          |]
+    --       expectedMapping =
+    --         mapFromList
+    --           [ (Identifier "largest", ValInt 100)
+    --           ]
+    --   interpreterTest input expectedMapping

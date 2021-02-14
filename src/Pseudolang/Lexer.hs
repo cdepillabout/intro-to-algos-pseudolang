@@ -40,6 +40,7 @@ data Tok
   | TokLessThanOrEqualTo
   | TokMinus
   | TokNewline
+  | TokNotEquals -- ^ @/=@
   | TokOpenCurlyBrace
   | TokOpenParen
   | TokOpenSquareBracket
@@ -146,6 +147,7 @@ reservedSyms =
   , ("-", TokMinus)
   , (".", TokPeriod)
   , ("/", TokDivide)
+  , ("/=", TokNotEquals)
   , ("<", TokLessThan)
   , ("<=", TokLessThanOrEqualTo)
   , ("=", TokEquals)

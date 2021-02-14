@@ -92,6 +92,7 @@ data Expr
   | ExprLessThanOrEqualTo Expr Expr
   | ExprMinus Expr Expr
   | ExprNegate Expr
+  | ExprNotEquals Expr Expr -- ^ This is like @x /= y@.
   | ExprOr Expr Expr -- ^ This is like @x or y@.
   | ExprParens Expr
   | ExprPlus Expr Expr
@@ -101,6 +102,14 @@ data Expr
   | ExprTuple Tuple
   | ExprVar Identifier
   deriving stock (Eq, Ord, Show)
+
+instance Num Expr where
+  (+) = ExprPlus
+  (-) = ExprMinus
+  (*) = ExprTimes
+  abs = error "Num Expr, abs not defined"
+  signum = error "Num Expr, signum not defined"
+  fromInteger = ExprInteger
 
 newtype Identifier = Identifier { unIdentifier :: Text }
   deriving stock (Eq, Ord, Show)
@@ -425,6 +434,7 @@ exprTable =
     , binary (tokenParser' TokMinus) ExprMinus
     ]
   , [ binary (tokenParser' TokDoubleEquals) ExprEquals
+    , binary (tokenParser' TokNotEquals) ExprNotEquals
     , binary (tokenParser' TokLessThan) ExprLessThan
     , binary (tokenParser' TokLessThanOrEqualTo) ExprLessThanOrEqualTo
     , binary (tokenParser' TokGreaterThan) ExprGreaterThan

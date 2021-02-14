@@ -631,10 +631,10 @@ interpretExpr = \case
     valInt1 <- interpretExprToValInt expr1
     valInt2 <- interpretExprToValInt expr2
     pure $ ValInt $ quotValInt valInt1 valInt2
-  ExprEquals expr1 expr2 -> do
+  ExprNotEquals expr1 expr2 -> do
     valInt1 <- interpretExprToValInt expr1
     valInt2 <- interpretExprToValInt expr2
-    pure $ ValBool $ eqValInt valInt1 valInt2
+    pure $ ValBool $ not $ eqValInt valInt1 valInt2
   ExprGreaterThan expr1 expr2 -> do
     valInt1 <- interpretExprToValInt expr1
     valInt2 <- interpretExprToValInt expr2
@@ -663,6 +663,10 @@ interpretExpr = \case
   ExprNegate expr -> do
     valInt <- interpretExprToValInt expr
     pure $ ValInt $ negateValInt valInt
+  ExprEquals expr1 expr2 -> do
+    valInt1 <- interpretExprToValInt expr1
+    valInt2 <- interpretExprToValInt expr2
+    pure $ ValBool $ eqValInt valInt1 valInt2
   ExprOr expr1 expr2 -> do
     bool1 <- interpretExprToBool expr1
     -- We need to evaluate the second expression lazily.
