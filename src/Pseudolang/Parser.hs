@@ -154,17 +154,26 @@ nonEmptyStatementsParser = do
         (singletonSet $ Label $ 'E' :| "xpecting at least one statement")
     (h:ts) -> pure (h :| ts)
 
+-- statementsParser :: Parser [Statement]
+-- statementsParser = trace "before statementsParser" do
+--   traceM "entering statementsParser"
+--   -- List of either blank lines or statements
+--   eitherStatements <-
+--     some do
+--       fmap Left (try $ optional indentParser *> blankLineParser) <|>
+--         fmap Right indentedStatementParser <?> "statement in a list of statements"
+--   traceShowM eitherStatements
+--   -- Ignore the blank lines
+--   pure $ trace "ending statementsParser" $ catRights eitherStatements
 statementsParser :: Parser [Statement]
-statementsParser = trace "before statementsParser" do
-  traceM "entering statementsParser"
+statementsParser = do
   -- List of either blank lines or statements
   eitherStatements <-
     some do
       fmap Left (try $ optional indentParser *> blankLineParser) <|>
         fmap Right indentedStatementParser <?> "statement in a list of statements"
-  traceShowM eitherStatements
   -- Ignore the blank lines
-  pure $ trace "ending statementsParser" $ catRights eitherStatements
+  pure $ catRights eitherStatements
 
 -- | Parse any number of blank lines
 blankLineParser :: Parser ()

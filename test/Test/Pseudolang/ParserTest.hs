@@ -904,10 +904,10 @@ test =
     --             ]
     --         ]
     --   parserTest statementsParser input expectedAST
-    fit "test45" $ do
-      let input = "  if 1 == 2\n    x = 3\n  y = 4\n"
-          expectedAST =
-            [ ifStmnt (1 @== 2) [ assignStmnt "x" 3 ]
-            , assignStmnt "y" 4
-            ]
-      parserTest (indented statementsParser) input expectedAST
+    -- fit "test45" $ do
+    --   let input = "  if 1 == 2\n    x = 3\n  y = 4\n"
+    --       expectedAST =
+    --         [ ifStmnt (1 @== 2) [ assignStmnt "x" 3 ]
+    --         , assignStmnt "y" 4
+    --         ]
+    --   parserTest (indented statementsParser) input expectedAST

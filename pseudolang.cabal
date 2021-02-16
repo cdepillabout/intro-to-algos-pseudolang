@@ -37,8 +37,10 @@ library
     Pseudolang.Interpreter.Real
     Pseudolang.Interpreter.Test
     Pseudolang.Lexer
+    Pseudolang.LexerNG
     Pseudolang.Main
     Pseudolang.Parser
+    Pseudolang.ParserNG
     Pseudolang.Prelude
   other-modules:
     Paths_pseudolang
@@ -120,6 +122,7 @@ test-suite pseudolang-test
     Test.Pseudolang.InterpreterTest
     Test.Pseudolang.LexerTest
     Test.Pseudolang.ParserTest
+    Test.Pseudolang.ParserNGTest
     Test.Pseudolang.Utils
   build-depends:
       base >=4.7 && <5
