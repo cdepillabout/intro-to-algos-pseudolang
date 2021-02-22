@@ -10,7 +10,7 @@ import qualified Data.Set as Set
 import Text.Megaparsec (ErrorItem(Label), ParsecT, between, eof, failure, many, sepBy, some, token, try, unPos, (<?>))
 import qualified Text.Megaparsec.Debug as Megaparsec.Debug
 
-import Pseudolang.LexerNG (Parser, Tok(..), Token(Token), identifierParser)
+import Pseudolang.LexerNG
 
 newtype AST = AST { unAST :: [TopLevel] }
   deriving stock (Eq, Ord, Show)
@@ -104,6 +104,7 @@ instance Num Expr where
   (+) = ExprPlus
   (-) = ExprMinus
   (*) = ExprTimes
+  negate = ExprNegate
   abs = error "Num Expr, abs not defined"
   signum = error "Num Expr, signum not defined"
   fromInteger = ExprInteger
@@ -115,5 +116,137 @@ newtype Identifier = Identifier { unIdentifier :: Text }
 dbg :: Show a => String -> Parser a -> Parser a
 dbg lbl p = ReaderT $ \indentAmount -> Megaparsec.Debug.dbg lbl (runReaderT p indentAmount)
 
+-- tokenParser :: forall a. (Tok -> Maybe a) -> Parser a
+-- tokenParser f = token go Set.empty
+--   where
+--     go :: Token -> Maybe a
+--     go (Token t _ _) = f t
+
+-- tokenParser' :: Tok -> Parser ()
+-- tokenParser' tok = tokenParser f
+--   where
+--     f :: Tok -> Maybe ()
+--     f t = if t == tok then Just () else Nothing
+
+assignmentLHSParser :: Parser AssignmentLHS
+assignmentLHSParser =
+  -- try (fmap AssignmentLHSArrayIndex arrayIndexParser) <|>
+    -- try (fmap AssignmentLHSProperty propertyParser) <|>
+  fmap AssignmentLHSIdentifier identParser <|>
+  fmap AssignmentLHSTuple assignmentLHSTupleParser
+
+assignmentLHSTupleParser :: Parser [AssignmentLHS]
+assignmentLHSTupleParser = do
+  between
+    openParenParser
+    closeParenParser
+    (sepBy assignmentLHSParser commaParser)
+
+assignmentParser :: Parser Assignment
+assignmentParser = do
+  assignLHS <- assignmentLHSParser
+  equalsParser
+  expr <- exprParser
+  pure $ Assignment assignLHS expr
+
 identParser :: Parser Identifier
 identParser = fmap Identifier identifierParser <?> "identifier"
+
+exprParser :: Parser Expr
+exprParser = makeExprParser termParser exprTable <?> "expression"
+
+-- arrayLiteralParser :: Parser Expr
+-- arrayLiteralParser = do
+--   exprs <- between (tokenParser' TokOpenSquareBracket) (tokenParser' TokCloseSquareBracket)
+--     (sepBy exprParser (tokenParser' TokComma))
+--   pure $ ExprArrayLit exprs
+
+-- arrayIndexParser :: Parser ArrayIndex
+-- arrayIndexParser = do
+--   ident <- identParser
+--   indexExpr <-
+--     between
+--       (tokenParser' TokOpenSquareBracket)
+--       (tokenParser' TokCloseSquareBracket)
+--       exprParser
+--   pure $ ArrayIndex ident indexExpr
+
+-- tupleParser :: Parser Tuple
+-- tupleParser = do
+--   exprs <-
+--     between
+--       (tokenParser' TokOpenParen)
+--       (tokenParser' TokCloseParen)
+--       (sepBy exprParser (tokenParser' TokComma))
+--   pure $ Tuple exprs
+
+-- funCallParser :: Parser FunCall
+-- funCallParser = do
+--   funName <- identParser
+--   args <- tupleParser
+--   pure $ FunCall funName args
+
+-- propertyParser :: Parser Property
+-- propertyParser = do
+--   ident <- identParser
+--   tokenParser' TokPeriod
+--   propertyIdent <- identParser
+--   pure $ Property ident propertyIdent
+
+-- infinityParser :: Parser Expr
+-- infinityParser = do
+--   tokenParser' TokInfinity
+--   pure ExprInfinity
+
+parenExprParser :: Parser Expr
+parenExprParser = do
+  ExprParens <$> between openParenParser closeParenParser exprParser
+
+termParser :: Parser Expr
+termParser =
+  try parenExprParser
+  -- <|> fmap ExprTuple tupleParser
+  -- <|> arrayLiteralParser
+  <|> fmap ExprInteger integerParser
+  -- <|> stringLiteralParser
+  -- <|> infinityParser
+  -- <|> try (fmap ExprFunCall funCallParser)
+  -- <|> try (fmap ExprArrayIndex arrayIndexParser)
+  -- <|> try (fmap ExprProperty propertyParser)
+  <|> fmap ExprVar identParser
+  <?> "term"
+
+exprTable :: [[Operator Parser Expr]]
+exprTable =
+  [ [ prefix minusParser ExprNegate
+    ]
+  , [ binary timesParser ExprTimes
+    , binary divideParser ExprDivide
+    ]
+  , [ binary plusParser ExprPlus
+    , binary minusParser ExprMinus
+    ]
+  , [ binary doubleEqualsParser ExprEquals
+    , binary notEqualsParser ExprNotEquals
+    , binary lessThanParser ExprLessThan
+    , binary lessThanOrEqualToParser ExprLessThanOrEqualTo
+    , binary greaterThanParser ExprGreaterThan
+    , binary greaterThanOrEqualToParser ExprGreaterThanOrEqualTo
+    ]
+  -- , [ binary andParser ExprAnd
+  --   , binary orParser ExprOr
+  --   ]
+  ]
+  where
+    binary :: Parser () -> (Expr -> Expr -> Expr) -> Operator Parser Expr
+    binary parser exprCreator = InfixL (parser $> exprCreator)
+
+    prefix :: Parser () -> (Expr -> Expr) -> Operator Parser Expr
+    prefix parser exprCreator = Prefix (parser $> exprCreator)
+
+catRights :: [Either x a] -> [a]
+catRights = foldr f []
+  where
+    f :: Either x a -> [a] -> [a]
+    f (Right a) accum = a : accum
+    f (Left _) accum = accum

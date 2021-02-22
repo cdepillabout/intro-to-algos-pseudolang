@@ -10,7 +10,7 @@ import Test.Hspec (Spec, describe, expectationFailure, fit, it, shouldBe)
 import Text.Megaparsec (eof, errorBundlePretty, parse)
 import Text.Pretty.Simple (pShow)
 
-import Pseudolang.ASTBuilder
+import Pseudolang.ASTBuilderNG
 -- import Pseudolang.LexerNG (Tok(..), Token(Token), tokenizer)
 import Pseudolang.LexerNG (Parser)
 import Pseudolang.ParserNG
@@ -52,48 +52,20 @@ test =
   describe "ParserNG" $ do
     it "test1" $ do
       parserTest identParser "foo" (Identifier "foo")
-    -- it "test2" $ do
-    --   let inputTokens =
-    --         [ TokIdentifier "foo"
-    --         , TokPlus
-    --         , TokIdentifier "bar"
-    --         ]
-    --       expectedAST = ExprPlus (ExprVar "foo") (ExprVar "bar")
-    --   parserFromTokenizerTest exprParser (mkToks inputTokens) expectedAST
-    -- it "test3" $ do
-    --   let inputTokens =
-    --         [ TokInteger 3
-    --         , TokPlus
-    --         , TokInteger 4
-    --         , TokTimes
-    --         , TokInteger 5
-    --         ]
-    --       expectedAST =
-    --         ExprPlus
-    --           (ExprInteger 3)
-    --           (ExprTimes
-    --             (ExprInteger 4)
-    --             (ExprInteger 5)
-    --           )
-    --   parserFromTokenizerTest exprParser (mkToks inputTokens) expectedAST
-    -- it "test4" $ do
-    --   let input = "x = 1 + 2"
-    --       expectedAST =
-    --         Assignment
-    --           (AssignmentLHSIdentifier "x")
-    --           (ExprPlus
-    --             (ExprInteger 1)
-    --             (ExprInteger 2)
-    --           )
-    --   parserTest assignmentParser input expectedAST
-    -- it "test5" $ do
-    --   let input = "1 + 2"
-    --       expectedAST =
-    --         (ExprPlus
-    --             (ExprInteger 1)
-    --             (ExprInteger 2)
-    --         )
-    --   parserTest exprParser input expectedAST
+    it "test2" $ do
+      parserTest exprParser "foo + bar" (ExprVar "foo" + ExprVar "bar")
+    it "test2.1" $ do
+      parserTest exprParser "(foo + bar)" (ExprParens (ExprVar "foo" + ExprVar "bar"))
+    it "test2.2" $ do
+      parserTest exprParser "(foo * bar)" (ExprParens (ExprVar "foo" * ExprVar "bar"))
+    it "test2.3" $ do
+      parserTest exprParser "-bar" (negate (ExprVar "bar"))
+    it "test3" $ do
+      parserTest exprParser "3 + 4 * 5" (3 + 4 * 5)
+    it "test3.1" $ do
+      parserTest exprParser "3 + 4 + 5" ((3 + 4) + 5)
+    it "test4" $ do
+      parserTest assignmentParser "x = 1 + 2" (assign "x" (1 + 2))
     -- it "test6" $ do
     --   let input = "x = 1 + 2"
     --       expectedAST =

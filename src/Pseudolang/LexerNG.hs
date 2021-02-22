@@ -183,6 +183,66 @@ reservedSymsParser = do
     reservedSymParsers =
         fmap (\(str, tok) -> try $ reservedSymParser str tok) reservedSyms
 
+openParenParser :: Parser ()
+openParenParser = lexemeParser' $ void $ string "("
+
+closeParenParser :: Parser ()
+closeParenParser = lexemeParser' $ void $ string ")"
+
+timesParser :: Parser ()
+timesParser = lexemeParser' $ void $ string "*"
+
+plusParser :: Parser ()
+plusParser = lexemeParser' $ void $ string "+"
+
+commaParser :: Parser ()
+commaParser = lexemeParser' $ void $ string ","
+
+minusParser :: Parser ()
+minusParser = lexemeParser' $ void $ string "-"
+
+periodParser :: Parser ()
+periodParser = lexemeParser' $ void $ string "."
+
+divideParser :: Parser ()
+divideParser = lexemeParser' $ void $ string "/"
+
+notEqualsParser :: Parser ()
+notEqualsParser = lexemeParser' $ void $ string "/="
+
+lessThanParser :: Parser ()
+lessThanParser = lexemeParser' $ void $ string "<"
+
+lessThanOrEqualToParser :: Parser ()
+lessThanOrEqualToParser = lexemeParser' $ void $ string "<="
+
+equalsParser :: Parser ()
+equalsParser = lexemeParser' $ void $ string "="
+
+doubleEqualsParser :: Parser ()
+doubleEqualsParser = lexemeParser' $ void $ string "=="
+
+greaterThanParser :: Parser ()
+greaterThanParser = lexemeParser' $ void $ string ">"
+
+greaterThanOrEqualToParser :: Parser ()
+greaterThanOrEqualToParser = lexemeParser' $ void $ string ">="
+
+openSquareBracketParser :: Parser ()
+openSquareBracketParser = lexemeParser' $ void $ string "["
+
+closeSquareBracketParser :: Parser ()
+closeSquareBracketParser = lexemeParser' $ void $ string "]"
+
+openCurlyBraceParser :: Parser ()
+openCurlyBraceParser = lexemeParser' $ void $ string "{"
+
+closeCurlyBraceParser :: Parser ()
+closeCurlyBraceParser = lexemeParser' $ void $ string "}"
+
+infinityParser :: Parser ()
+infinityParser = lexemeParser' $ void $ string "∞"
+
 identifierParser :: Parser Text
 identifierParser = do
   lexemeParser' do
@@ -191,8 +251,8 @@ identifierParser = do
     let ident = pack (firstChar : remainingChars)
     pure ident
 
-integerParser :: Parser Token
-integerParser = lexemeParser (fmap TokInteger Megaparsec.Lexer.decimal)
+integerParser :: Parser Integer
+integerParser = lexemeParser' Megaparsec.Lexer.decimal
 
 newlineParser :: Parser Token
 newlineParser = do

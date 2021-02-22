@@ -1,9 +1,9 @@
 
-module Pseudolang.ASTBuilder where
+module Pseudolang.ASTBuilderNG where
 
 import Pseudolang.Prelude
 
-import Pseudolang.Parser
+import Pseudolang.ParserNG
 
 (@==) :: Expr -> Expr -> Expr
 (@==) = ExprEquals
@@ -19,4 +19,5 @@ assign ident expr = (Assignment (AssignmentLHSIdentifier ident) expr)
 
 ifStmnt :: Expr -> NonEmpty Statement -> Statement
 ifStmnt expr statements = StatementIf (If expr statements Nothing)
+
 
